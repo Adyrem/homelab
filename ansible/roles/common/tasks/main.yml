@@ -11,7 +11,7 @@
     validate: visudo -cf %s
 
 - name: Ensure admin SSH key is authorized
-  authorized_key:
+  ansible.posix.authorized_key:
     user: "{{ admin_user }}"
     key: "{{ admin_ssh_key }}"
     state: present

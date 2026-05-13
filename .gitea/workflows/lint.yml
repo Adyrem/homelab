@@ -25,7 +25,7 @@ jobs:
       - name: Install ansible-lint and collections
         run: |
           python3 -m pip install ansible-lint --break-system-packages --quiet
-          ~/.local/bin/ansible-galaxy collection install community.general community.postgresql
+          ~/.local/bin/ansible-galaxy collection install community.general community.postgresql ansible.posix
 
       - name: Run ansible-lint
         working-directory: ansible
