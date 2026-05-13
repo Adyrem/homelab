@@ -1,0 +1,5 @@
+---
+- name: Restart gitea
+  systemd:
+    name: gitea
+    state: restarted

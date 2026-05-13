@@ -1,0 +1,14 @@
+---
+prometheus_scrape_targets:
+  - job: node
+    targets:
+      - host: monitoring
+        address: "localhost:9100"
+      - host: gitea
+        address: "10.10.1.125:9100"
+  - job: loki
+    targets:
+      - host: monitoring
+        address: "localhost:3100"
+
+grafana_admin_password: admin

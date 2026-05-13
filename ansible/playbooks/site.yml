@@ -1,0 +1,17 @@
+---
+- name: Common setup for all VMs
+  hosts: all
+  roles:
+    - common
+    - node_exporter
+    - promtail
+
+- name: Monitoring stack
+  hosts: monitoring_servers
+  roles:
+    - monitoring
+
+- name: Gitea
+  hosts: gitea_servers
+  roles:
+    - gitea

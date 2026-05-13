@@ -1,0 +1,7 @@
+---
+- name: Deploy monitoring stack
+  hosts: monitoring_servers
+  roles:
+    - node_exporter
+    - promtail
+    - monitoring

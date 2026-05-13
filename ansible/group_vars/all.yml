@@ -1,0 +1,5 @@
+timezone: Europe/Zurich
+admin_user: adyrem
+admin_ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILdW4rhQFv561bYs8w0/VgR6AFgOLvVsAh6pcjZ/CO2R homelab"
+
+loki_url: "http://10.10.1.137:3100"

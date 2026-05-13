@@ -1,0 +1,28 @@
+---
+- name: Install promtail
+  community.general.pacman:
+    name: promtail
+    state: present
+
+- name: Create promtail data directory
+  file:
+    path: /var/lib/promtail
+    state: directory
+    owner: promtail
+    group: promtail
+    mode: "0750"
+
+- name: Configure promtail
+  template:
+    src: promtail.yaml.j2
+    dest: /etc/loki/promtail.yaml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart promtail
+
+- name: Enable and start promtail
+  systemd:
+    name: promtail
+    enabled: true
+    state: started

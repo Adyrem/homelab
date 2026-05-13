@@ -1,0 +1,7 @@
+---
+- name: Deploy Gitea
+  hosts: gitea_servers
+  roles:
+    - node_exporter
+    - promtail
+    - gitea

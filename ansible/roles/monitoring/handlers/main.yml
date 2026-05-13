@@ -1,0 +1,20 @@
+---
+- name: Restart prometheus
+  systemd:
+    name: prometheus
+    state: restarted
+
+- name: Restart loki
+  systemd:
+    name: loki
+    state: restarted
+
+- name: Restart promtail
+  systemd:
+    name: promtail
+    state: restarted
+
+- name: Restart grafana
+  systemd:
+    name: grafana
+    state: restarted

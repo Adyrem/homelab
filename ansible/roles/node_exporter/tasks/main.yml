@@ -1,0 +1,11 @@
+---
+- name: Install prometheus-node-exporter
+  community.general.pacman:
+    name: prometheus-node-exporter
+    state: present
+
+- name: Enable and start node_exporter
+  systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started

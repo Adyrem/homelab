@@ -1,0 +1,103 @@
+---
+- name: Install monitoring stack
+  community.general.pacman:
+    name:
+      - prometheus
+      - prometheus-node-exporter
+      - grafana
+      - loki
+      - promtail
+      - alertmanager
+    state: present
+
+- name: Create Loki data directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: loki
+    group: loki
+    mode: "0750"
+  loop:
+    - /var/lib/loki
+    - /var/lib/loki/chunks
+    - /var/lib/loki/rules
+
+- name: Create Prometheus rules directory
+  file:
+    path: /etc/prometheus/rules
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: "0750"
+
+- name: Create promtail data directory
+  file:
+    path: /var/lib/promtail
+    state: directory
+    owner: promtail
+    group: promtail
+    mode: "0750"
+
+- name: Create Grafana provisioning directory
+  file:
+    path: /etc/grafana/provisioning/datasources
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0750"
+
+- name: Configure Prometheus
+  template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: prometheus
+    group: prometheus
+    mode: "0640"
+  notify: Restart prometheus
+
+- name: Configure Loki
+  template:
+    src: loki.yaml.j2
+    dest: /etc/loki/loki.yaml
+    owner: loki
+    group: loki
+    mode: "0640"
+  notify: Restart loki
+
+- name: Configure Promtail
+  template:
+    src: promtail.yaml.j2
+    dest: /etc/loki/promtail.yaml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart promtail
+
+- name: Configure Grafana datasources
+  template:
+    src: grafana-datasources.yaml.j2
+    dest: /etc/grafana/provisioning/datasources/homelab.yaml
+    owner: grafana
+    group: grafana
+    mode: "0640"
+  notify: Restart grafana
+
+- name: Set Grafana provisioning path
+  lineinfile:
+    path: /etc/grafana.ini
+    regexp: '^;?provisioning\s*='
+    line: "provisioning = /etc/grafana/provisioning"
+  notify: Restart grafana
+
+- name: Enable and start all monitoring services
+  systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - prometheus
+    - prometheus-node-exporter
+    - grafana
+    - loki
+    - promtail
+    - alertmanager

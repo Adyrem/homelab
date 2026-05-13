@@ -1,0 +1,12 @@
+---
+gitea_http_port: 3000
+gitea_domain: "{{ ansible_host }}"
+gitea_db_name: gitea
+gitea_db_user: gitea
+gitea_db_password: gitea
+gitea_secret_key: "REDACTED_SECRET_KEY"
+gitea_internal_token: "REDACTED_INTERNAL_TOKEN"
+
+gitea_admin_user: adyrem
+gitea_admin_password: ""      # set in vault or at runtime
+gitea_admin_email: ""         # set in group_vars or vault

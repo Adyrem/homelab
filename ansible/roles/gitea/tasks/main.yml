@@ -1,0 +1,89 @@
+---
+- name: Install gitea and postgresql
+  community.general.pacman:
+    name:
+      - gitea
+      - postgresql
+    state: present
+
+- name: Initialize PostgreSQL cluster
+  command: sudo -u postgres initdb --locale=en_US.UTF-8 -D /var/lib/postgres/data
+  args:
+    creates: /var/lib/postgres/data/PG_VERSION
+
+- name: Enable and start PostgreSQL
+  systemd:
+    name: postgresql
+    enabled: true
+    state: started
+
+- name: Create gitea database user
+  community.postgresql.postgresql_user:
+    name: "{{ gitea_db_user }}"
+    password: "{{ gitea_db_password }}"
+    state: present
+  become_user: postgres
+
+- name: Create gitea database
+  community.postgresql.postgresql_db:
+    name: "{{ gitea_db_name }}"
+    owner: "{{ gitea_db_user }}"
+    state: present
+  become_user: postgres
+
+- name: Create gitea data directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: gitea
+    group: gitea
+    mode: "0750"
+  loop:
+    - /var/lib/gitea/data/repositories
+    - /var/log/gitea
+
+- name: Configure Gitea
+  template:
+    src: app.ini.j2
+    dest: /etc/gitea/app.ini
+    owner: gitea
+    group: gitea
+    mode: "0640"
+  notify: Restart gitea
+
+- name: Fix gitea account expiry
+  command: chage -E -1 gitea
+
+- name: Enable and start Gitea
+  systemd:
+    name: gitea
+    enabled: true
+    state: started
+
+- name: Wait for Gitea to be ready
+  uri:
+    url: "http://localhost:{{ gitea_http_port }}/api/v1/version"
+    status_code: 200
+  register: gitea_ready
+  until: gitea_ready.status == 200
+  retries: 10
+  delay: 3
+
+- name: Check if admin user exists
+  command: gitea admin user list --config /etc/gitea/app.ini
+  become_user: gitea
+  register: gitea_user_list
+  changed_when: false
+
+- name: Create Gitea admin user
+  command: >
+    gitea admin user create
+    --username {{ gitea_admin_user }}
+    --password {{ gitea_admin_password }}
+    --email {{ gitea_admin_email }}
+    --admin
+    --config /etc/gitea/app.ini
+  become_user: gitea
+  when:
+    - gitea_admin_password != ""
+    - gitea_admin_user not in gitea_user_list.stdout

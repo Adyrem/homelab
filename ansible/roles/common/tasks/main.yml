@@ -1,0 +1,28 @@
+---
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Configure passwordless sudo for wheel
+  copy:
+    dest: /etc/sudoers.d/wheel
+    content: "%wheel ALL=(ALL) NOPASSWD: ALL\n"
+    mode: "0440"
+    validate: visudo -cf %s
+
+- name: Ensure admin SSH key is authorized
+  authorized_key:
+    user: "{{ admin_user }}"
+    key: "{{ admin_ssh_key }}"
+    state: present
+
+- name: Install base packages
+  community.general.pacman:
+    name:
+      - vim
+      - git
+      - htop
+      - curl
+      - base-devel
+    state: present
+    update_cache: true
