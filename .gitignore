@@ -1,0 +1,5 @@
+keys/
+wireguard/
+*.vault
+*.secret
+ansible/vault_pass
