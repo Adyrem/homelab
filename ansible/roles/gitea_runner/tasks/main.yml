@@ -4,6 +4,8 @@
     name:
       - git
       - docker
+      - nodejs
+      - python-pip
     state: present
 
 - name: Enable and start Docker
