@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(command ssh proxmox *)",
+      "Bash(command ssh gitea-vm *)",
+      "Bash(command ssh monitoring-vm *)",
+      "Bash(scp -i /home/adyrem/dev/homelab/keys/homelab_ed25519 * root@192.168.1.10:*)",
+      "Bash(scp -i /home/adyrem/dev/homelab/keys/homelab_ed25519 root@192.168.1.10:* *)"
+    ]
+  }
+}

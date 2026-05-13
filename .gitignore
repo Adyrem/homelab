@@ -3,3 +3,6 @@ wireguard/
 *.vault
 *.secret
 ansible/vault_pass
+user_credentials.json
+archinstall-configs/creds.json
+vms/

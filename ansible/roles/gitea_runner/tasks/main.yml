@@ -1,0 +1,106 @@
+---
+- name: Install act_runner dependencies
+  community.general.pacman:
+    name:
+      - git
+      - docker
+    state: present
+
+- name: Enable and start Docker
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Download act_runner binary
+  ansible.builtin.get_url:
+    url: "https://dl.gitea.com/act_runner/{{ gitea_runner_version }}/act_runner-{{ gitea_runner_version }}-linux-amd64"
+    dest: /usr/local/bin/act_runner
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Create act_runner user
+  ansible.builtin.user:
+    name: act_runner
+    system: true
+    shell: /sbin/nologin
+    home: /var/lib/act_runner
+    create_home: true
+    groups: docker
+    append: true
+
+- name: Create act_runner config directory
+  ansible.builtin.file:
+    path: /etc/act_runner
+    state: directory
+    owner: act_runner
+    group: act_runner
+    mode: "0750"
+
+- name: Generate default act_runner config
+  ansible.builtin.command:
+    cmd: act_runner generate-config
+    stdin: ""
+  register: runner_config_out
+  changed_when: false
+
+- name: Write act_runner config
+  ansible.builtin.copy:
+    content: "{{ runner_config_out.stdout }}"
+    dest: /etc/act_runner/config.yml
+    owner: act_runner
+    group: act_runner
+    mode: "0640"
+    force: false
+
+- name: Set runner labels in config
+  ansible.builtin.replace:
+    path: /etc/act_runner/config.yml
+    regexp: '^  labels:$'
+    replace: "  labels:\n    - \"native:host\""
+  notify: Restart act_runner
+
+- name: Register runner with Gitea
+  ansible.builtin.command:
+    cmd: >
+      act_runner register
+      --no-interactive
+      --instance "{{ gitea_runner_url }}"
+      --token "{{ gitea_runner_registration_token }}"
+      --name "{{ gitea_runner_name }}"
+      --labels "{{ gitea_runner_labels }}"
+      --config /etc/act_runner/config.yml
+    chdir: /var/lib/act_runner
+    creates: /var/lib/act_runner/.runner
+  become_user: act_runner
+
+- name: Install act_runner systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/act_runner.service
+    content: |
+      [Unit]
+      Description=Gitea Actions Runner
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=act_runner
+      WorkingDirectory=/var/lib/act_runner
+      ExecStart=/usr/local/bin/act_runner daemon --config /etc/act_runner/config.yml
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart act_runner
+
+- name: Enable and start act_runner
+  ansible.builtin.systemd:
+    name: act_runner
+    enabled: true
+    state: started
+    daemon_reload: true

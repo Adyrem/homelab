@@ -1,0 +1,108 @@
+{
+    "archinstall-language": "English",
+    "bootloader_config": {
+        "bootloader": "Systemd-boot",
+        "removable": true,
+        "uki": false
+    },
+    "custom_commands": [
+        "mkdir -p /home/adyrem/.ssh && chmod 700 /home/adyrem/.ssh && echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILdW4rhQFv561bYs8w0/VgR6AFgOLvVsAh6pcjZ/CO2R homelab' > /home/adyrem/.ssh/authorized_keys && chmod 600 /home/adyrem/.ssh/authorized_keys && chown -R adyrem:adyrem /home/adyrem/.ssh"
+    ],
+    "disk_config": {
+        "btrfs_options": {
+            "snapshot_config": null
+        },
+        "config_type": "manual_partitioning",
+        "device_modifications": [
+            {
+                "device": "/dev/vda",
+                "wipe": true,
+                "partitions": [
+                    {
+                        "btrfs": [],
+                        "dev_path": null,
+                        "flags": ["boot", "esp"],
+                        "fs_type": "fat32",
+                        "mount_options": [],
+                        "mountpoint": "/boot",
+                        "obj_id": "part-esp",
+                        "size": {
+                            "sector_size": { "unit": "B", "value": 512 },
+                            "unit": "GiB",
+                            "value": 1
+                        },
+                        "start": {
+                            "sector_size": { "unit": "B", "value": 512 },
+                            "unit": "MiB",
+                            "value": 1
+                        },
+                        "status": "create",
+                        "type": "primary"
+                    },
+                    {
+                        "btrfs": [
+                            { "name": "@",          "mountpoint": "/" },
+                            { "name": "@home",      "mountpoint": "/home" },
+                            { "name": "@var",       "mountpoint": "/var" },
+                            { "name": "@snapshots", "mountpoint": "/.snapshots" }
+                        ],
+                        "dev_path": null,
+                        "flags": [],
+                        "fs_type": "btrfs",
+                        "mount_options": ["compress=zstd"],
+                        "mountpoint": null,
+                        "obj_id": "part-root",
+                        "size": {
+                            "sector_size": { "unit": "B", "value": 512 },
+                            "unit": "B",
+                            "value": 41873833984
+                        },
+                        "start": {
+                            "sector_size": { "unit": "B", "value": 512 },
+                            "unit": "B",
+                            "value": 1074790400
+                        },
+                        "status": "create",
+                        "type": "primary"
+                    }
+                ]
+            }
+        ]
+    },
+    "hostname": "monitoring",
+    "kernels": ["linux"],
+    "locale_config": {
+        "kb_layout": "de_CH-latin1",
+        "sys_enc": "UTF-8",
+        "sys_lang": "en_US"
+    },
+    "mirror_config": {
+        "custom_repositories": [],
+        "custom_servers": [],
+        "mirror_regions": {
+            "Worldwide": ["https://geo.mirror.pkgbuild.com/$repo/os/$arch"]
+        },
+        "optional_repositories": []
+    },
+    "network_config": {
+        "type": "nm"
+    },
+    "ntp": true,
+    "packages": [
+        "base-devel",
+        "git",
+        "openssh",
+        "networkmanager",
+        "vim",
+        "qemu-guest-agent"
+    ],
+    "parallel_downloads": 5,
+    "script": "guided",
+    "services": ["sshd", "NetworkManager", "qemu-guest-agent"],
+    "swap": {
+        "algorithm": "zstd",
+        "enabled": false
+    },
+    "timezone": "Europe/Zurich",
+    "version": "4.3"
+}

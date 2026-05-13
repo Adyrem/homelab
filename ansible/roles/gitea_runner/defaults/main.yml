@@ -1,0 +1,6 @@
+---
+gitea_runner_version: "0.2.11"
+gitea_runner_url: "http://10.10.1.125:3000"
+gitea_runner_name: "{{ inventory_hostname }}"
+gitea_runner_labels: "native:host"
+gitea_runner_registration_token: "{{ vault_gitea_runner_token }}"

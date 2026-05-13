@@ -5,3 +5,4 @@
     - node_exporter
     - promtail
     - gitea
+    - gitea_runner

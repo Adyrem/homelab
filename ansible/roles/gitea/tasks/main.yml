@@ -4,6 +4,7 @@
     name:
       - gitea
       - postgresql
+      - python-psycopg2
     state: present
 
 - name: Initialize PostgreSQL cluster
