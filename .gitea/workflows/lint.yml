@@ -16,9 +16,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ansible-lint
-        run: pip install ansible-lint --break-system-packages --quiet
+      - name: Install ansible-lint and collections
+        run: |
+          python3 -m pip install ansible-lint --break-system-packages --quiet
+          ~/.local/bin/ansible-galaxy collection install community.general community.postgresql
 
       - name: Run ansible-lint
         working-directory: ansible
-        run: ansible-lint --profile=min playbooks/site.yml
+        run: ~/.local/bin/ansible-lint --profile=min playbooks/site.yml
