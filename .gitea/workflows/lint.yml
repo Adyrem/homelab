@@ -16,6 +16,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup vault password
+        run: |
+          mkdir -p ~/.config/homelab
+          echo '${{ secrets.VAULT_PASSWORD }}' > ~/.config/homelab/vault_pass
+          chmod 600 ~/.config/homelab/vault_pass
+
       - name: Install ansible-lint and collections
         run: |
           python3 -m pip install ansible-lint --break-system-packages --quiet
