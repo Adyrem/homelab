@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FAIL=0
+errors=()
+
+# Files that must never be staged (matched against path)
+FORBIDDEN_PATHS=(
+  'vault_pass$'
+  '\.secret$'
+  '\.vault$'
+  '_ed25519$'
+  '_rsa$'
+  '_dsa$'
+  '_ecdsa$'
+  'user_credentials\.json$'
+  '\.env$'
+)
+
+# Regex patterns that indicate secrets in file content.
+# Each is matched with: grep -qiE -e "$pattern"
+SECRET_PATTERNS=(
+  'BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY'
+  'password[[:space:]]*[:=][[:space:]]*["\x27]?[A-Za-z0-9+/!@#$%^&*]{16,}'
+  'secret_key[[:space:]]*[:=][[:space:]]*["\x27][A-Za-z0-9+/]{24,}'
+  'internal_token[[:space:]]*[:=][[:space:]]*["\x27][A-Za-z0-9+/]{24,}'
+  'token[[:space:]]*[:=][[:space:]]*["\x27][a-f0-9]{40}'
+  'api[_-]?key[[:space:]]*[:=][[:space:]]*["\x27][A-Za-z0-9]{24,}'
+)
+
+# Lines matching these are skipped before pattern matching (false-positive suppression)
+SAFE_PATTERNS=(
+  '\$ANSIBLE_VAULT'
+  '\{\{.*\}\}'
+  '^[[:space:]]*#'
+  'vault_password_file'
+  '^vault_[a-z_]*:'
+  'grafana_admin_password: admin'
+  '_password:.*vault_'
+  'Example\|example\|placeholder\|CHANGEME'
+)
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null)
+[[ -z "$staged" ]] && exit 0
+
+# --- Check forbidden file paths ---
+for f in $staged; do
+  for pattern in "${FORBIDDEN_PATHS[@]}"; do
+    if echo "$f" | grep -qE -e "$pattern"; then
+      errors+=("FORBIDDEN FILE: $f  (matches: $pattern)")
+      FAIL=1
+    fi
+  done
+done
+
+# --- Check staged content for secret patterns ---
+for f in $staged; do
+  # Skip binary files
+  if git diff --cached -- "$f" | grep -qP '^\+.*[\x00-\x08\x0b-\x1f\x7f-\xff]' 2>/dev/null; then
+    continue
+  fi
+
+  while IFS= read -r line; do
+    # Strip leading '+' from diff hunk line
+    content="${line:1}"
+
+    # Skip safe/allowlisted lines
+    skip=0
+    for safe in "${SAFE_PATTERNS[@]}"; do
+      if echo "$content" | grep -qE -e "$safe"; then
+        skip=1
+        break
+      fi
+    done
+    [[ $skip -eq 1 ]] && continue
+
+    # Check against secret patterns
+    for pattern in "${SECRET_PATTERNS[@]}"; do
+      if echo "$content" | grep -qiE -e "$pattern"; then
+        # Redact the actual value in the error message
+        redacted=$(echo "$content" | sed -E 's/([=:][[:space:]]*["\x27]?)[A-Za-z0-9+\/!@#$%^&*]{8,}/\1**REDACTED**/g')
+        errors+=("SECRET in $f: ${redacted:0:120}")
+        FAIL=1
+        break
+      fi
+    done
+  done < <(git diff --cached -- "$f" | grep -E '^\+[^+]')
+done
+
+# --- Report ---
+if [[ ${FAIL} -eq 1 ]]; then
+  echo "" >&2
+  echo "pre-commit: potential secrets detected — commit blocked" >&2
+  echo "" >&2
+  for e in "${errors[@]}"; do
+    echo "  ✗ $e" >&2
+  done
+  echo "" >&2
+  echo "  To bypass (only if certain this is a false positive):" >&2
+  echo "    git commit --no-verify" >&2
+  echo "" >&2
+  exit 1
+fi
