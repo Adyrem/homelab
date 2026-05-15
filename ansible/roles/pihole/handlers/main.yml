@@ -1,0 +1,10 @@
+---
+- name: Restart pihole-FTL
+  ansible.builtin.service:
+    name: pihole-FTL
+    state: restarted
+
+- name: Update pihole hosts
+  ansible.builtin.command:
+    cmd: python3 /tmp/pihole_update_hosts.py
+  notify: Restart pihole-FTL

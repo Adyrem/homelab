@@ -1,0 +1,17 @@
+---
+traefik_version: "3.3.4"
+traefik_http_port: 80
+traefik_https_port: 443
+traefik_dashboard_port: 8080
+traefik_log_level: "INFO"
+
+traefik_services:
+  - name: gitea
+    host: "gitea.homelab"
+    backend: "http://10.10.1.125:3000"
+  - name: grafana
+    host: "grafana.homelab"
+    backend: "http://10.10.1.137:3000"
+  - name: pihole
+    host: "pihole.homelab"
+    backend: "http://10.10.1.2:80"

@@ -1,6 +1,6 @@
 ---
-- name: Common setup for all VMs
-  hosts: all
+- name: Common setup for all Arch VMs
+  hosts: all:!pihole_servers:!traefik_servers
   roles:
     - common
     - node_exporter
@@ -15,3 +15,13 @@
   hosts: gitea_servers
   roles:
     - gitea
+
+- name: Pi-hole
+  hosts: pihole_servers
+  roles:
+    - pihole
+
+- name: Traefik
+  hosts: traefik_servers
+  roles:
+    - traefik

@@ -1,0 +1,17 @@
+http:
+  routers:
+{% for svc in traefik_services %}
+    {{ svc.name }}:
+      rule: "Host(`{{ svc.host }}`)"
+      service: {{ svc.name }}
+      entryPoints:
+        - web
+{% endfor %}
+
+  services:
+{% for svc in traefik_services %}
+    {{ svc.name }}:
+      loadBalancer:
+        servers:
+          - url: "{{ svc.backend }}"
+{% endfor %}

@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+import re
+
+hosts = [
+{% for h in pihole_dns_hosts %}
+    "{{ h.ip }} {{ h.host }}",
+{% endfor %}
+]
+
+hosts_str = "[" + ", ".join('"' + h + '"' for h in hosts) + "]"
+
+with open("/etc/pihole/pihole.toml", "r") as f:
+    content = f.read()
+
+content = re.sub(
+    r"(?m)^( *hosts\s*=\s*)\[.*\]",
+    r"\g<1>" + hosts_str,
+    content,
+)
+
+with open("/etc/pihole/pihole.toml", "w") as f:
+    f.write(content)

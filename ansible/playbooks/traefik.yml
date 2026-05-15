@@ -1,0 +1,5 @@
+---
+- name: Deploy Traefik
+  hosts: traefik_servers
+  roles:
+    - traefik

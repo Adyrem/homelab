@@ -1,0 +1,5 @@
+---
+- name: Deploy Pi-hole
+  hosts: pihole_servers
+  roles:
+    - pihole
