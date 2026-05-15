@@ -1,0 +1,8 @@
+[Unit]
+Description=Syncoid ZFS replication to HDD
+After=zfs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/syncoid --recursive --no-privilege-elevation rpool/data hdd/backups/rpool-data
+ExecStart=/usr/sbin/syncoid --no-privilege-elevation rpool/ROOT/pve-1 hdd/backups/pve-root
