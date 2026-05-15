@@ -10,8 +10,23 @@
 ## Non-Negotiable Requirements
 
 1. Claude Code sessions can SSH into multiple VMs in the same session with full sudo access inside the VM.
-2. Claude Code sessions cannot execute any commands on the host — only read and write files in designated folders.
+2. Claude Code sessions cannot execute any commands on the Proxmox host — only read and write files in designated folders via SFTP.
 3. A Windows VM with Visual Studio must be runnable and accessible via RDP.
+
+## Claude Code Execution Model
+
+Claude Code runs inside a **dedicated persistent VM** hosted on Proxmox (not on the Proxmox host directly and not on the operator's local machine). This satisfies requirement 2 by construction — Claude Code never has a shell on the host.
+
+**Why a dedicated VM, not the local machine:**  
+The operator connects from multiple devices (home desktop, laptop, etc.) via WireGuard. Running Claude Code on a local machine would lose session state on disconnect. Running it in a persistent VM means sessions survive disconnects — the operator reconnects via SSH and reattaches a `tmux` session.
+
+**Access pattern:**
+- Operator → WireGuard → SSH into Claude Code VM → `tmux attach`
+- Claude Code VM → SSH into dev/infra VMs (full sudo inside each VM)
+- Claude Code VM → SFTP to Proxmox host via `claude-code` user (read/write workspace files only, no shell)
+- Claude Code VM has no route to `infra-net` or `desktop-net` — dev VMs only, plus the SFTP path to host
+
+**Session persistence:** `tmux` runs inside the Claude Code VM. Sessions survive SSH disconnects. The operator can reconnect from any WireGuard-connected device and resume exactly where they left off.
 
 ---
 
@@ -93,11 +108,12 @@
   - SSH key login only, no password SSH
   - Full `sudo` access
 - One `claude-code` service user — enforces non-negotiable requirement 2:
-  - **Shell set to `/usr/lib/openssh/sftp-server`** — SFTP-only, zero execution rights on host
-  - **Chroot or path restriction** to designated read/write folders only (e.g. `/home/claude-code/workspace`)
-  - SSH access restricted to a dedicated key
+  - **`ForceCommand internal-sftp`** + **`ChrootDirectory`** in sshd — SFTP-only, zero shell execution on host
+  - Chroot restricted to `/home/claude-code` with a writable `workspace/` subdirectory
+  - SSH access restricted to a dedicated keypair (private key lives in the Claude Code VM only)
   - No access to Proxmox tooling, VM management, or other users' files
-  - Cannot be used as a jump host — Claude Code SSHes directly into VMs
+  - Cannot be used as a jump host — `AllowTcpForwarding no`
+  - Used exclusively by the Claude Code VM to read/write files on the Proxmox host
 
 ### VM Users (all VMs)
 - `root` account: password set, SSH login disabled
