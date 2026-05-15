@@ -1,0 +1,54 @@
+auto lo
+iface lo inet loopback
+
+iface nic0 inet manual
+
+auto vmbr0
+iface vmbr0 inet static
+	address 192.168.1.10/24
+	gateway 192.168.1.1
+	bridge-ports nic0
+	bridge-stp off
+	bridge-fd 0
+	post-up   iptables -t nat -A PREROUTING -i vmbr0 -p tcp --dport 80  -j DNAT --to-destination 10.10.1.3:80
+	post-up   iptables -t nat -A PREROUTING -i vmbr0 -p tcp --dport 443 -j DNAT --to-destination 10.10.1.3:443
+	post-down iptables -t nat -D PREROUTING -i vmbr0 -p tcp --dport 80  -j DNAT --to-destination 10.10.1.3:80
+	post-down iptables -t nat -D PREROUTING -i vmbr0 -p tcp --dport 443 -j DNAT --to-destination 10.10.1.3:443
+	post-up   iptables -t nat -A PREROUTING  -i vmbr0 -p udp --dport 53 -j DNAT --to-destination 10.10.1.2:53
+	post-up   iptables -t nat -A PREROUTING  -i vmbr0 -p tcp --dport 53 -j DNAT --to-destination 10.10.1.2:53
+	post-up   iptables -t nat -A POSTROUTING -p udp -d 10.10.1.2 --dport 53 -j MASQUERADE
+	post-up   iptables -t nat -A POSTROUTING -p tcp -d 10.10.1.2 --dport 53 -j MASQUERADE
+	post-down iptables -t nat -D PREROUTING  -i vmbr0 -p udp --dport 53 -j DNAT --to-destination 10.10.1.2:53
+	post-down iptables -t nat -D PREROUTING  -i vmbr0 -p tcp --dport 53 -j DNAT --to-destination 10.10.1.2:53
+	post-down iptables -t nat -D POSTROUTING -p udp -d 10.10.1.2 --dport 53 -j MASQUERADE
+	post-down iptables -t nat -D POSTROUTING -p tcp -d 10.10.1.2 --dport 53 -j MASQUERADE
+
+
+source /etc/network/interfaces.d/*
+
+auto vmbr1
+iface vmbr1 inet static
+        address 10.10.1.1/24
+        bridge-ports none
+        bridge-stp off
+        bridge-fd 0
+        post-up iptables -t nat -A POSTROUTING -s 10.10.1.0/24 -o vmbr0 -j MASQUERADE
+        post-down iptables -t nat -D POSTROUTING -s 10.10.1.0/24 -o vmbr0 -j MASQUERADE
+
+auto vmbr2
+iface vmbr2 inet static
+        address 10.10.2.1/24
+        bridge-ports none
+        bridge-stp off
+        bridge-fd 0
+        post-up iptables -t nat -A POSTROUTING -s 10.10.2.0/24 -o vmbr0 -j MASQUERADE
+        post-down iptables -t nat -D POSTROUTING -s 10.10.2.0/24 -o vmbr0 -j MASQUERADE
+
+auto vmbr3
+iface vmbr3 inet static
+        address 10.10.3.1/24
+        bridge-ports none
+        bridge-stp off
+        bridge-fd 0
+        post-up iptables -t nat -A POSTROUTING -s 10.10.3.0/24 -o vmbr0 -j MASQUERADE
+        post-down iptables -t nat -D POSTROUTING -s 10.10.3.0/24 -o vmbr0 -j MASQUERADE
