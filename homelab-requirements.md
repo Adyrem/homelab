@@ -65,9 +65,9 @@ The operator connects from multiple devices (home desktop, laptop, etc.) via Wir
 - A dedicated SSH keypair for this project; public key committed to repo, private key kept by operator
 - Dedicated non-default SSH port — to be decided during setup
 
-### RDP
-- RDP is for VMs only — no RDP on the host
-- VM RDP accessible through VPN from outside the network
+### Remote Desktop
+- RDP is not used — Windows VM uses SPICE via Proxmox web UI (Windows 11 Home N limitation)
+- SPICE accessible via VPN by connecting to the Proxmox web UI at port 8006
 
 ### Firewall
 - Proxmox built-in firewall enabled at datacenter and host level
@@ -183,7 +183,7 @@ The operator connects from multiple devices (home desktop, laptop, etc.) via Wir
   1. Clean Windows install + activation
   2. Visual Studio install + configuration
   - Snapshots sent to HDD ZFS pool; rebuild = `zfs receive` from HDD
-- **Access:** RDP via VPN from outside network
+- **Access:** SPICE via Proxmox web UI (Windows 11 Home N does not include RDP server)
 - **Network:** `desktop-net`, no access to host or other VM networks
 - **Monitoring:** Ping/availability check only
 
