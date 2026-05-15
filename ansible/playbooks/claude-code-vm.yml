@@ -1,0 +1,8 @@
+---
+- name: Configure Claude Code VM
+  hosts: claude_code_vms
+  roles:
+    - common
+    - node_exporter
+    - promtail
+    - claude_code

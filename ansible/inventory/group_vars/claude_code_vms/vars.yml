@@ -1,0 +1,2 @@
+ansible_user: adyrem
+ansible_ssh_common_args: "-o ProxyJump=root@192.168.1.10 -o StrictHostKeyChecking=no"

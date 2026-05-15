@@ -1,0 +1,64 @@
+---
+- name: Install Claude Code dependencies
+  community.general.pacman:
+    name:
+      - nodejs
+      - npm
+      - ansible
+      - python-pip
+      - tmux
+      - git
+    state: present
+    update_cache: true
+
+- name: Install Claude Code CLI
+  community.general.npm:
+    name: "@anthropic-ai/claude-code"
+    global: true
+    state: present
+
+- name: Deploy homelab SSH private key
+  ansible.builtin.copy:
+    src: homelab_ed25519
+    dest: /home/{{ admin_user }}/.ssh/homelab_ed25519
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: "0600"
+
+- name: Deploy claude-code SFTP private key
+  ansible.builtin.copy:
+    src: claude-code_ed25519
+    dest: /home/{{ admin_user }}/.ssh/claude-code_ed25519
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: "0600"
+
+- name: Write SSH client config
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: /home/{{ admin_user }}/.ssh/config
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: "0600"
+
+- name: Write tmux config
+  ansible.builtin.copy:
+    dest: /home/{{ admin_user }}/.tmux.conf
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: "0644"
+    content: |
+      set -g default-terminal "screen-256color"
+      set -g history-limit 50000
+      set -g mouse on
+      set -g base-index 1
+      set -g escape-time 10
+      bind r source-file ~/.tmux.conf \; display "Reloaded"
+
+- name: Clone homelab repo
+  ansible.builtin.git:
+    repo: "http://10.10.1.125:3000/adyrem/homelab.git"
+    dest: /home/{{ admin_user }}/dev/homelab
+    version: main
+  become_user: "{{ admin_user }}"
+  become: true
