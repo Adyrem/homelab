@@ -1,0 +1,9 @@
+[Unit]
+Description=Syncoid ZFS replication to HDD
+After=zfs.target
+
+[Service]
+Type=oneshot
+{% for job in syncoid_jobs %}
+ExecStart=/usr/sbin/syncoid --no-privilege-elevation{% if job.recursive %} --recursive{% endif %} {{ job.src }} {{ job.dst }}
+{% endfor %}

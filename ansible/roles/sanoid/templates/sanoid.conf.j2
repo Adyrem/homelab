@@ -1,0 +1,19 @@
+{% for entry in sanoid_datasets %}
+[{{ entry.dataset }}]
+    use_template = {{ entry.template }}
+{% if entry.recursive %}
+    recursive = yes
+{% endif %}
+
+{% endfor %}
+{% for name, t in sanoid_templates.items() %}
+[template_{{ name }}]
+    daily = {{ t.daily }}
+    weekly = {{ t.weekly }}
+    monthly = {{ t.monthly }}
+    hourly = {{ t.hourly }}
+    frequently = {{ t.frequently }}
+    autosnap = {{ 'yes' if t.autosnap else 'no' }}
+    autoprune = {{ 'yes' if t.autoprune else 'no' }}
+
+{% endfor %}

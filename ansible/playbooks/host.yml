@@ -11,3 +11,4 @@
   hosts: proxmox_hosts
   roles:
     - proxmox_host
+    - sanoid

@@ -173,19 +173,7 @@ ansible-playbook playbooks/claude-code-vm.yml
 
 ### 6. Set up sanoid/syncoid for ZFS snapshots
 
-Sanoid and syncoid are not yet in an Ansible role — deploy manually:
-
-```bash
-apt install sanoid
-
-# Copy config from repo
-cp proxmox/sanoid.conf /etc/sanoid/sanoid.conf
-cp proxmox/syncoid.service /etc/systemd/system/syncoid.service
-cp proxmox/syncoid.timer /etc/systemd/system/syncoid.timer
-
-systemctl enable --now sanoid.timer
-systemctl enable --now syncoid.timer
-```
+Handled automatically by `playbooks/host.yml` (the `sanoid` role). No manual steps needed.
 
 ### 7. Restore Grafana password
 

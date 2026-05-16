@@ -3,8 +3,8 @@ Description=Daily ZFS replication to HDD
 After=sanoid.timer
 
 [Timer]
-OnCalendar=*-*-* 02:00:00
-RandomizedDelaySec=10min
+OnCalendar={{ syncoid_schedule }}
+RandomizedDelaySec={{ syncoid_randomized_delay }}
 Persistent=true
 
 [Install]
