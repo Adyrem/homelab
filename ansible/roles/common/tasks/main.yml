@@ -16,6 +16,26 @@
     key: "{{ admin_ssh_key }}"
     state: present
 
+- name: Configure static IP via NetworkManager
+  ansible.builtin.shell: |
+    CURRENT=$(nmcli -t -f IP4.ADDRESS dev show {{ network_interface }} 2>/dev/null | cut -d: -f2)
+    EXPECTED="{{ ansible_host }}/{{ network_prefix }}"
+    if [ "$CURRENT" != "$EXPECTED" ]; then
+      CONN=$(nmcli -t -f NAME,DEVICE con show | grep ":{{ network_interface }}$" | cut -d: -f1 | head -1)
+      nmcli con mod "$CONN" \
+        ipv4.method manual \
+        ipv4.addresses "$EXPECTED" \
+        ipv4.gateway {{ network_gateway }} \
+        ipv4.dns {{ network_dns }}
+      nmcli con up "$CONN"
+      echo changed
+    else
+      echo ok
+    fi
+  register: _net
+  changed_when: "'changed' in _net.stdout"
+  when: network_gateway is defined
+
 - name: Install base packages
   community.general.pacman:
     name:

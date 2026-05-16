@@ -1,1 +1,6 @@
 ansible_user: adyrem
+
+network_interface: ens18
+network_prefix: 24
+network_gateway: 10.10.1.1
+network_dns: 10.10.1.2
