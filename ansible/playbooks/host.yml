@@ -1,0 +1,13 @@
+---
+# Proxmox host configuration: admin user, claude-code SFTP user, SSH hardening,
+# unattended security upgrades.
+#
+# BOOTSTRAP NOTE: First run connects as root (see group_vars/proxmox_hosts/vars.yml).
+# After the first run, root SSH login is disabled — update the group_vars to:
+#   ansible_user: adyrem
+#   ansible_become: true
+#   ansible_port: 2222
+- name: Configure Proxmox host
+  hosts: proxmox_hosts
+  roles:
+    - proxmox_host

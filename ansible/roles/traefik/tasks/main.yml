@@ -26,6 +26,15 @@
     - /etc/traefik
     - /etc/traefik/conf.d
 
+- name: Create acme.json for Let's Encrypt certificate storage
+  ansible.builtin.copy:
+    dest: /etc/traefik/acme.json
+    content: ""
+    owner: traefik
+    group: traefik
+    mode: "0600"
+    force: false
+
 - name: Check installed Traefik version
   ansible.builtin.command:
     cmd: /usr/local/bin/traefik version

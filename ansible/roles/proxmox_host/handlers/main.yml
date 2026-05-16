@@ -1,0 +1,14 @@
+- name: Restart sshd
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
+
+- name: Restart WireGuard
+  ansible.builtin.systemd:
+    name: wg-quick@wg0
+    state: restarted
+
+- name: Reload Proxmox firewall
+  ansible.builtin.service:
+    name: pve-firewall
+    state: restarted

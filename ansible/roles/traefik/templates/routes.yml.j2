@@ -1,11 +1,45 @@
 http:
   routers:
 {% for svc in traefik_services %}
-    {{ svc.name }}:
+    {{ svc.name }}-internal:
       rule: "Host(`{{ svc.host }}`)"
       service: {{ svc.name }}
       entryPoints:
         - web
+{% if svc.public_host is defined %}
+    {{ svc.name }}-public-redirect:
+      rule: "Host(`{{ svc.public_host }}`){% if svc.public_path is defined %} && PathPrefix(`{{ svc.public_path }}`){% endif %}"
+      service: {{ svc.name }}
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-https
+    {{ svc.name }}-public:
+      rule: "Host(`{{ svc.public_host }}`){% if svc.public_path is defined %} && PathPrefix(`{{ svc.public_path }}`){% endif %}"
+      service: {{ svc.name }}
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+{% if svc.strip_prefix is defined %}
+      middlewares:
+        - {{ svc.name }}-strip-prefix
+{% endif %}
+{% endif %}
+{% endfor %}
+
+  middlewares:
+    redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+{% for svc in traefik_services %}
+{% if svc.strip_prefix is defined %}
+    {{ svc.name }}-strip-prefix:
+      stripPrefix:
+        prefixes:
+          - "{{ svc.strip_prefix }}"
+{% endif %}
 {% endfor %}
 
   services:

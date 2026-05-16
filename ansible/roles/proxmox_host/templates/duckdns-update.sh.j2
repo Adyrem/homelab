@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+result=$(curl -s "https://www.duckdns.org/update?domains={{ duckdns_domain }}&token={{ duckdns_token }}&ip=")
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $result" >> /var/log/duckdns.log
+[[ "$result" == "OK" ]] || exit 1

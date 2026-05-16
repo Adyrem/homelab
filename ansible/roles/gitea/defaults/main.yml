@@ -1,6 +1,7 @@
 ---
 gitea_http_port: 3000
 gitea_domain: "{{ ansible_host }}"
+gitea_root_url: "https://adyrem.duckdns.org/git/"
 gitea_db_name: gitea
 gitea_db_user: gitea
 gitea_db_password: "{{ vault_gitea_db_password }}"

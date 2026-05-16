@@ -1,0 +1,207 @@
+# --- Proxmox firewall ---
+
+- name: Ensure Proxmox datacenter firewall is enabled
+  ansible.builtin.shell: pvesh set /cluster/firewall/options --enable 1
+  changed_when: false
+
+- name: Ensure host firewall rules
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/pve_firewall.py"
+    executable: /usr/bin/python3
+  register: _pve_fw
+  changed_when: "'changed' in _pve_fw.stdout"
+  failed_when: false
+
+# --- Packages ---
+
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - sudo
+      - unattended-upgrades
+      - apt-listchanges
+      - wireguard
+    state: present
+    update_cache: true
+
+# --- Admin user ---
+
+- name: Ensure admin user exists
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+
+- name: Authorize admin SSH key
+  ansible.posix.authorized_key:
+    user: "{{ admin_user }}"
+    key: "{{ admin_ssh_key }}"
+    state: present
+    exclusive: true
+
+- name: Grant admin user passwordless sudo
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/{{ admin_user }}
+    content: "{{ admin_user }} ALL=(ALL:ALL) NOPASSWD: ALL\n"
+    owner: root
+    group: root
+    mode: '0440'
+    validate: visudo -cf %s
+
+# --- claude-code SFTP user ---
+
+- name: Ensure claude-code user exists
+  ansible.builtin.user:
+    name: claude-code
+    shell: /usr/sbin/nologin
+    home: /home/claude-code
+    create_home: false
+    system: false
+
+- name: Chroot base directory — root-owned (OpenSSH requirement)
+  ansible.builtin.file:
+    path: /home/claude-code
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: .ssh directory for claude-code authorized_keys
+  ansible.builtin.file:
+    path: /home/claude-code/.ssh
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Authorize claude-code SSH key
+  ansible.builtin.copy:
+    dest: /home/claude-code/.ssh/authorized_keys
+    content: "{{ claude_code_ssh_key }}\n"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Writable workspace inside chroot
+  ansible.builtin.file:
+    path: /home/claude-code/workspace
+    state: directory
+    owner: claude-code
+    group: claude-code
+    mode: '0755'
+
+# --- SSH hardening ---
+
+# Change port in the main config so sshd listens only on ssh_port.
+# A drop-in Port directive would add a second port, not replace the default.
+- name: Set SSH port
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Port\s'
+    line: "Port {{ ssh_port }}"
+  notify: Restart sshd
+
+- name: Deploy SSH hardening drop-in
+  ansible.builtin.template:
+    src: sshd_homelab.conf.j2
+    dest: /etc/ssh/sshd_config.d/99-homelab.conf
+    owner: root
+    group: root
+    mode: '0600'
+  notify: Restart sshd
+
+# --- Unattended upgrades ---
+
+- name: Deploy unattended-upgrades config
+  ansible.builtin.template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable daily security updates
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- DuckDNS dynamic DNS updater ---
+
+- name: Deploy DuckDNS update script
+  ansible.builtin.template:
+    src: duckdns-update.sh.j2
+    dest: /usr/local/bin/duckdns-update.sh
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install DuckDNS systemd service
+  ansible.builtin.copy:
+    src: duckdns.service
+    dest: /etc/systemd/system/duckdns.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install DuckDNS systemd timer
+  ansible.builtin.copy:
+    src: duckdns.timer
+    dest: /etc/systemd/system/duckdns.timer
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable and start DuckDNS timer
+  ansible.builtin.systemd:
+    name: duckdns.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# --- WireGuard VPN ---
+
+- name: Enable IP forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    reload: true
+
+- name: Generate WireGuard server keypair
+  ansible.builtin.shell: |
+    wg genkey > /etc/wireguard/server.key
+    chmod 600 /etc/wireguard/server.key
+    wg pubkey < /etc/wireguard/server.key > /etc/wireguard/server.pub
+  args:
+    creates: /etc/wireguard/server.key
+
+- name: Read server private key
+  ansible.builtin.slurp:
+    src: /etc/wireguard/server.key
+  register: _wg_server_key
+  no_log: true
+
+- name: Deploy wg0.conf
+  ansible.builtin.template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/wg0.conf
+    owner: root
+    group: root
+    mode: '0600'
+  vars:
+    wg_server_private_key: "{{ _wg_server_key.content | b64decode | trim }}"
+  notify: Restart WireGuard
+
+- name: Enable and start WireGuard
+  ansible.builtin.systemd:
+    name: wg-quick@wg0
+    enabled: true
+    state: started
+    daemon_reload: true

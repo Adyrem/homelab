@@ -1,0 +1,17 @@
+ansible_user: adyrem
+ansible_become: true
+ansible_become_method: sudo
+ansible_port: 2222
+
+ssh_port: 2222
+
+claude_code_ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINgCFi4cju1/dmyXkVtO1azFt9VvWNoYjuUjcw7IlJdC claude-code@homelab"
+
+duckdns_domain: adyrem
+duckdns_token: "{{ vault_duckdns_token }}"
+
+wireguard_port: 51820
+wireguard_peers:
+  - name: fedora
+    public_key: "ivtchk9pxEwYwusMzmn7Uq89LFV3uB1I8iYto0EJuy4="
+    allowed_ips: 10.10.10.2/32

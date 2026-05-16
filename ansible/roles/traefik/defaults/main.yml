@@ -4,11 +4,15 @@ traefik_http_port: 80
 traefik_https_port: 443
 traefik_dashboard_port: 8080
 traefik_log_level: "INFO"
+traefik_acme_email: "fanfohcd@gmail.com"
 
 traefik_services:
   - name: gitea
     host: "gitea.homelab"
     backend: "http://10.10.1.125:3000"
+    public_host: "adyrem.duckdns.org"
+    public_path: "/git"
+    strip_prefix: "/git"
   - name: grafana
     host: "grafana.homelab"
     backend: "http://10.10.1.137:3000"

@@ -5,11 +5,21 @@ api:
 entryPoints:
   web:
     address: ":{{ traefik_http_port }}"
+  websecure:
+    address: ":{{ traefik_https_port }}"
 
 providers:
   file:
     directory: /etc/traefik/conf.d
     watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: {{ traefik_acme_email }}
+      storage: /etc/traefik/acme.json
+      httpChallenge:
+        entryPoint: web
 
 log:
   level: {{ traefik_log_level }}

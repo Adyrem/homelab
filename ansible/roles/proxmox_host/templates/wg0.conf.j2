@@ -1,0 +1,15 @@
+# Managed by Ansible — do not edit manually
+[Interface]
+Address = 10.10.10.1/24
+ListenPort = {{ wireguard_port }}
+PrivateKey = {{ wg_server_private_key }}
+PostUp   = iptables -I FORWARD -i %i -j ACCEPT; iptables -I FORWARD -o %i -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+{% for peer in wireguard_peers %}
+[Peer]
+# {{ peer.name }}
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ peer.allowed_ips }}
+
+{% endfor %}

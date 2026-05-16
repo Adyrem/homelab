@@ -4,9 +4,12 @@ log_level_in: nolog
 log_level_out: nolog
 
 [RULES]
-IN ACCEPT -source 192.168.1.0/24 -p tcp -dport 22
+IN ACCEPT -source 192.168.1.0/24 -p tcp -dport 2222
+IN ACCEPT -source 10.10.10.0/24 -p tcp -dport 2222
 IN ACCEPT -source 192.168.1.0/24 -p tcp -dport 8006
+IN ACCEPT -source 10.10.10.0/24 -p tcp -dport 8006
 IN ACCEPT -source 192.168.1.0/24 -p tcp -dport 3128
 IN ACCEPT -source 10.10.0.0/16 -p udp -dport 53
 IN ACCEPT -source 10.10.0.0/16 -p tcp -dport 53
+IN ACCEPT -p udp -dport 51820
 IN ACCEPT -p icmp

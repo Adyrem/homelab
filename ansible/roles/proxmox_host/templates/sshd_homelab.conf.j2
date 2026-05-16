@@ -1,0 +1,11 @@
+# Managed by Ansible — do not edit manually
+PasswordAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+
+Match User claude-code
+    ForceCommand internal-sftp
+    ChrootDirectory /home/claude-code
+    AllowTcpForwarding no
+    X11Forwarding no
