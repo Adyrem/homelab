@@ -6,3 +6,4 @@ ansible/vault_pass
 user_credentials.json
 archinstall-configs/creds.json
 vms/
+.claude/scheduled_tasks.lock
