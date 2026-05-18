@@ -205,3 +205,20 @@
     enabled: true
     state: started
     daemon_reload: true
+
+# --- VM network firewall flags ---
+# vmbr2 VMs must have firewall=0 on their network interfaces.
+# When firewall=1, Proxmox creates a fwbr bridge; iptables POSTROUTING fires
+# at that bridge (OUT=fwbrNNNi0) before the packet reaches vmbr0, so the
+# MASQUERADE rule (-o vmbr0) never matches and VMs lose internet access.
+
+- name: Ensure claude-code VM (105) net0 has firewall disabled
+  ansible.builtin.shell: |
+    net0=$(qm config 105 | awk '/^net0:/ {print $2}')
+    if echo "$net0" | grep -q 'firewall=1'; then
+      qm set 105 --net0 "${net0//,firewall=1/,firewall=0}"
+      echo changed
+    fi
+  register: _vm105_fw
+  changed_when: "'changed' in _vm105_fw.stdout"
+  failed_when: false
