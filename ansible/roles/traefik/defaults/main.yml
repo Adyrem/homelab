@@ -25,3 +25,25 @@ traefik_services:
   - name: pihole
     host: "pihole.homelab"
     backend: "http://10.10.1.2:80"
+  - name: jellyfin
+    host: "jellyfin.homelab"
+    backend: "http://10.10.1.50:8096"
+  - name: jellyseerr
+    host: "jellyseerr.homelab"
+    backend: "http://10.10.1.50:5055"
+  - name: radarr
+    host: "radarr.homelab"
+    backend: "http://10.10.1.50:7878"
+  - name: sonarr
+    host: "sonarr.homelab"
+    backend: "http://10.10.1.50:8989"
+  - name: prowlarr
+    host: "prowlarr.homelab"
+    backend: "http://10.10.1.50:9696"
+  - name: qbittorrent
+    host: "qbittorrent.homelab"
+    backend: "http://10.10.1.50:5080"
+  - name: proxmox
+    host: "proxmox.homelab"
+    backend: "https://192.168.1.10:8006"
+    tls_skip_verify: true

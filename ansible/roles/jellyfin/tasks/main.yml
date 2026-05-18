@@ -1,0 +1,154 @@
+---
+# --- System setup ---
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ jellyfin_timezone }}"
+
+- name: Grant adyrem passwordless sudo
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/adyrem
+    content: "adyrem ALL=(ALL:ALL) NOPASSWD: ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - apt-transport-https
+    state: present
+    update_cache: true
+
+# --- Docker ---
+
+- name: Add Docker GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /usr/share/keyrings/docker.asc
+    mode: "0644"
+
+- name: Add Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/usr/share/keyrings/docker.asc]
+      https://download.docker.com/linux/debian bookworm stable
+    filename: docker
+    state: present
+
+- name: Install Docker and compose plugin
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Enable and start Docker
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+# --- NVIDIA container toolkit ---
+
+- name: Add NVIDIA container toolkit GPG key
+  ansible.builtin.get_url:
+    url: https://nvidia.github.io/libnvidia-container/gpgkey
+    dest: /usr/share/keyrings/nvidia-container-toolkit.asc
+    mode: "0644"
+
+- name: Add NVIDIA container toolkit apt repository
+  ansible.builtin.get_url:
+    url: https://nvidia.github.io/libnvidia-container/stable/deb/amd64/Packages
+    dest: /tmp/nvidia-ct-packages
+    mode: "0644"
+  check_mode: false
+  changed_when: false
+
+- name: Write nvidia-container-toolkit sources list
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+    content: |
+      deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit.asc] https://nvidia.github.io/libnvidia-container/stable/deb/amd64 /
+    mode: "0644"
+
+- name: Install nvidia-container-toolkit
+  ansible.builtin.apt:
+    name: nvidia-container-toolkit
+    state: present
+    update_cache: true
+
+- name: Configure Docker to use NVIDIA runtime
+  ansible.builtin.command:
+    cmd: nvidia-ctk runtime configure --runtime=docker
+  changed_when: false
+
+- name: Restart Docker to apply NVIDIA runtime
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted
+
+# --- NVIDIA userspace libraries ---
+# The LXC has /dev/nvidia* bind-mounted from the host.
+# The host's NVIDIA driver version must match what we install here.
+
+- name: Check if NVIDIA userspace libraries are installed
+  ansible.builtin.stat:
+    path: /usr/lib/x86_64-linux-gnu/libcuda.so.{{ nvidia_driver_version }}
+  register: _nvidia_libs
+
+- name: Copy NVIDIA installer from Proxmox host to LXC
+  ansible.builtin.copy:
+    src: /tmp/nvidia-580.run
+    dest: /tmp/nvidia.run
+    mode: "0755"
+  when: not _nvidia_libs.stat.exists
+
+- name: Install NVIDIA userspace libraries (no kernel module)
+  ansible.builtin.command:
+    cmd: /tmp/nvidia.run --silent --no-kernel-module --no-drm
+    creates: /usr/lib/x86_64-linux-gnu/libcuda.so.{{ nvidia_driver_version }}
+  when: not _nvidia_libs.stat.exists
+
+# --- Config directories and compose file ---
+
+- name: Create container config directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ jellyfin_config_dirs }}"
+
+- name: Create stack directory
+  ansible.builtin.file:
+    path: /opt/jellyfin
+    state: directory
+    mode: "0755"
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/jellyfin/docker-compose.yml
+    mode: "0644"
+  notify: Restart jellyfin stack
+
+- name: Deploy systemd service
+  ansible.builtin.template:
+    src: jellyfin-stack.service.j2
+    dest: /etc/systemd/system/jellyfin-stack.service
+    mode: "0644"
+  notify: Restart jellyfin stack
+
+- name: Enable and start jellyfin stack service
+  ansible.builtin.systemd:
+    name: jellyfin-stack
+    enabled: true
+    state: started
+    daemon_reload: true

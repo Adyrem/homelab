@@ -1,0 +1,23 @@
+---
+jellyfin_version: "10.10.7"
+qbittorrent_version: "5.1.4"
+radarr_version: "6.0.4"
+sonarr_version: "4.0.16"
+prowlarr_version: "2.3.0"
+flaresolverr_version: "v3.3.21"
+jellyseerr_version: "2.5.2"
+
+jellyfin_timezone: "Europe/Zurich"
+jellyfin_puid: "1000"
+jellyfin_pgid: "1000"
+
+nvidia_driver_version: "580.159.03"
+
+jellyfin_config_dirs:
+  - /containers/jellyfin/config
+  - /containers/qbittorrent/config
+  - /containers/radarr/config
+  - /containers/sonarr/config
+  - /containers/prowlarr/config
+  - /containers/flaresolverr/config
+  - /containers/jellyseerr/config

@@ -298,7 +298,88 @@ In the event of full hardware loss, the rebuild order is:
 
 ---
 
-## 10. Out of Scope (for now)
+## 10. Media Stack (Jellyfin)
+
+### Overview
+A self-hosted media server and automation stack running in a dedicated LXC container on `infra-net`. All web UIs are internal-only, accessible via VPN or LAN. Port 6881 (BitTorrent peering) is the only internet-facing port.
+
+### Services
+| Container | Purpose | Port |
+|---|---|---|
+| Jellyfin | Media server / streaming | 8096 |
+| Jellyseerr | Media request UI | 5055 |
+| Radarr | Movie download management | 7878 |
+| Sonarr | TV show download management | 8989 |
+| Prowlarr | Indexer aggregator (feeds Radarr/Sonarr) | 9696 |
+| FlareSolverr | Cloudflare bypass for Prowlarr | 8191 |
+| qBittorrent | Torrent client | 5080 (UI), 6881 (peers) |
+
+### LXC Container
+- **Host:** Proxmox LXC, ID 106
+- **Template:** Debian 12
+- **Mode:** Privileged (required for NVIDIA device passthrough)
+- **Features:** `nesting=1` (required for Docker)
+- **Network:** `vmbr1` (infra-net), static IP `10.10.1.50`
+- **Resources:** 4 CPU cores, 4GB RAM
+- **GPU passthrough:** NVIDIA GTX 1060 via device node bind-mount (not PCIe passthrough)
+  - NVIDIA proprietary driver installed on Proxmox host
+  - Same driver version installed inside the LXC (versions must match exactly)
+  - Device nodes passed into LXC via `lxc.cgroup2.devices.allow`: `/dev/nvidia0`, `/dev/nvidiactl`, `/dev/nvidia-uvm`, `/dev/nvidia-uvm-tools`
+  - `nvidia-container-toolkit` installed inside LXC to enable Docker GPU access
+  - Jellyfin container configured to use NVENC (encoding) and NVDEC (decoding)
+
+### Storage
+- **Media library:** ZFS dataset `hdd/media`, bind-mounted into LXC at `/media`
+  - All containers share this path for downloads and library access
+- **Config state:** `/containers/<service>/config` on LXC root dataset (SSD, rpool)
+  - Directories: `jellyfin`, `qbittorrent`, `radarr`, `sonarr`, `prowlarr`, `flaresolverr`, `jellyseerr`
+
+### Deployment
+- All services run via a single Docker Compose file managed by the `jellyfin` Ansible role
+- Compose file derived from reference stack (`jellyfin-tools` in repo root) with:
+  - Jellyfin container added
+  - Traefik Docker labels removed (Traefik is a standalone LXC, not a Docker container)
+  - Docker `proxy` network removed; services reach each other by container name within Compose
+  - All image tags pinned (no `latest`)
+  - Timezone: `Europe/Zurich`
+- Managed as a systemd service so it starts on LXC boot
+
+### Routing (internal-only)
+All services accessible at `.homelab` hostnames via Traefik (LXC 104, `10.10.1.3`). No public host — reachable via VPN or LAN only.
+
+| Hostname | Backend |
+|---|---|
+| `jellyfin.homelab` | `http://10.10.1.50:8096` |
+| `jellyseerr.homelab` | `http://10.10.1.50:5055` |
+| `radarr.homelab` | `http://10.10.1.50:7878` |
+| `sonarr.homelab` | `http://10.10.1.50:8989` |
+| `prowlarr.homelab` | `http://10.10.1.50:9696` |
+| `qbittorrent.homelab` | `http://10.10.1.50:5080` |
+
+FlareSolverr has no web UI worth routing; Prowlarr reaches it by container name internally.
+
+### DNS
+Pi-hole A records: all 6 routed hostnames → `10.10.1.3` (Traefik).
+
+### Port 6881 (BitTorrent Peering)
+- **Proxmox DNAT** (in `proxmox/network-interfaces`): TCP+UDP 6881 on `192.168.1.10` → `10.10.1.50:6881`
+- **Manual step:** Home router port-forward: 6881 TCP+UDP → `192.168.1.10`
+- qBittorrent web UI (5080) remains internal-only
+
+### Ansible
+- New role: `jellyfin` — installs Docker, creates config dirs, deploys Compose file, enables systemd service
+- New playbook: `jellyfin.yml` — targets the media LXC
+- Media LXC added to inventory; included in `site.yml` for common/node_exporter/promtail roles
+
+### NVIDIA Driver Notes
+- Driver version on host and in LXC must be identical — this is a hard requirement for NVIDIA device passthrough
+- The LXC does **not** need the full NVIDIA driver package (kernel modules already loaded on host); it only needs the userspace libraries (`nvidia-utils` / `libnvidia-compute`)
+- `nvidia-smi` inside the LXC is the verification step after setup
+- If a Proxmox host kernel update bumps the NVIDIA driver, the LXC libraries must be updated to match before Jellyfin transcoding will work again
+
+---
+
+## 11. Out of Scope (for now)
 
 - External/cloud backups (architecture must not preclude adding later)
 - Additional VM distros beyond those listed — template mechanism should make adding easy

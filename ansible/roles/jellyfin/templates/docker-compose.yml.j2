@@ -1,0 +1,95 @@
+name: jellyfin
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:{{ jellyfin_version }}
+    container_name: jellyfin
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+      - TZ={{ jellyfin_timezone }}
+    volumes:
+      - /containers/jellyfin/config:/config
+      - /media:/media
+    ports:
+      - "8096:8096"
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:{{ qbittorrent_version }}
+    container_name: qbittorrent
+    environment:
+      - PUID={{ jellyfin_puid }}
+      - PGID={{ jellyfin_pgid }}
+      - TZ={{ jellyfin_timezone }}
+      - WEBUI_PORT=5080
+    volumes:
+      - /containers/qbittorrent/config:/config
+      - /media:/downloads
+    ports:
+      - "5080:5080"
+      - "6881:6881"
+      - "6881:6881/udp"
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:{{ radarr_version }}
+    container_name: radarr
+    environment:
+      - PUID={{ jellyfin_puid }}
+      - PGID={{ jellyfin_pgid }}
+      - TZ={{ jellyfin_timezone }}
+    volumes:
+      - /containers/radarr/config:/config
+      - /media:/downloads
+    ports:
+      - "7878:7878"
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:{{ sonarr_version }}
+    container_name: sonarr
+    environment:
+      - PUID={{ jellyfin_puid }}
+      - PGID={{ jellyfin_pgid }}
+      - TZ={{ jellyfin_timezone }}
+    volumes:
+      - /containers/sonarr/config:/config
+      - /media:/downloads
+    ports:
+      - "8989:8989"
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:{{ prowlarr_version }}
+    container_name: prowlarr
+    environment:
+      - PUID={{ jellyfin_puid }}
+      - PGID={{ jellyfin_pgid }}
+      - TZ={{ jellyfin_timezone }}
+    volumes:
+      - /containers/prowlarr/config:/config
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:{{ flaresolverr_version }}
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - TZ={{ jellyfin_timezone }}
+    ports:
+      - "8191:8191"
+    restart: unless-stopped
+
+  jellyseerr:
+    image: ghcr.io/fallenbagel/jellyseerr:{{ jellyseerr_version }}
+    container_name: jellyseerr
+    environment:
+      - TZ={{ jellyfin_timezone }}
+    volumes:
+      - /containers/jellyseerr/config:/app/config
+    ports:
+      - "5055:5055"
+    restart: unless-stopped

@@ -6,6 +6,8 @@ http:
       service: {{ svc.name }}
       entryPoints:
         - web
+        - websecure
+      tls: {}
 {% if svc.public_host is defined %}
     {{ svc.name }}-public-redirect:
       rule: "Host(`{{ svc.public_host }}`){% if svc.public_path is defined %} && PathPrefix(`{{ svc.public_path }}`){% endif %}"
@@ -48,4 +50,23 @@ http:
       loadBalancer:
         servers:
           - url: "{{ svc.backend }}"
+{% if svc.tls_skip_verify is defined and svc.tls_skip_verify %}
+        serversTransport: {{ svc.name }}-transport
+{% endif %}
 {% endfor %}
+
+{% set ns = namespace(has_skip_verify=false) %}
+{% for svc in traefik_services %}
+{% if svc.tls_skip_verify is defined and svc.tls_skip_verify %}
+{% set ns.has_skip_verify = true %}
+{% endif %}
+{% endfor %}
+{% if ns.has_skip_verify %}
+  serversTransports:
+{% for svc in traefik_services %}
+{% if svc.tls_skip_verify is defined and svc.tls_skip_verify %}
+    {{ svc.name }}-transport:
+      insecureSkipVerify: true
+{% endif %}
+{% endfor %}
+{% endif %}

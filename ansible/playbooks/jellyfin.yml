@@ -1,0 +1,6 @@
+---
+- name: Deploy Jellyfin media stack
+  hosts: media_servers
+  become: true
+  roles:
+    - jellyfin

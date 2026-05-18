@@ -1,0 +1,132 @@
+name: jellyfin-tools
+services:
+  qbittorrent:
+    container_name: qbittorrent
+    image: lscr.io/linuxserver/qbittorrent:5.1.4
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qbittorrent.rule=Host(`bittorrent.home.sjaun.ch`)"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=5080"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Zurich
+      - WEBUI_PORT=5080
+    volumes:
+      - /containers/qbittorrent/config:/config
+      - /media:/downloads
+    ports:
+      - 5080:5080
+      - 6881:6881
+      - 6881:6881/udp
+    restart: "unless-stopped"
+
+  radarr:
+    container_name: radarr
+    image: lscr.io/linuxserver/radarr:6.0.4
+    networks:
+      - proxy    
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.home.sjaun.ch`)"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Zurich
+    ports:
+      - 7878:7878
+    volumes:
+      - /containers/radarr/config:/config
+      - /media:/downloads
+    restart: "unless-stopped"
+
+  sonarr:
+    image: linuxserver/sonarr:4.0.16
+    container_name: sonarr
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.home.sjaun.ch`)"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Zurich
+    volumes:
+      - /containers/sonarr/config:/config
+      - /media:/downloads
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  prowlarr:
+    container_name: prowlarr
+    image: linuxserver/prowlarr:2.3.0
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.home.sjaun.ch`)"
+      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Zurich
+    volumes:
+      - /containers/prowlarr/config:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+
+  flaresolverr:
+    # DockerHub mirror flaresolverr/flaresolverr:latest
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.flaresolverr.rule=Host(`flaresolverr.home.sjaun.ch`)"
+      - "traefik.http.services.flaresolverr.loadbalancer.server.port=8191"
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-none}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=Europe/Zurich
+    ports:
+      - "${PORT:-8191}:8191"
+    volumes:
+      - /containers/flaresolver/config:/config
+    restart: unless-stopped
+
+  jellyseerr:
+    image: ghcr.io/fallenbagel/jellyseerr:latest
+    init: true
+    container_name: jellyseerr
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyseerr.rule=Host(`jellyseerr.home.sjaun.ch`)"
+      - "traefik.http.services.jellyseerr.loadbalancer.server.port=5055"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Zurich
+    volumes:
+      - /containers/jellyseerr/config:/app/config
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+      retries: 3
+    restart: unless-stopped
+networks:
+  proxy:
+    external: true
