@@ -6,6 +6,7 @@
 |--------|--------------|
 | server | 10.10.10.1   |
 | fedora | 10.10.10.2   |
+| phone  | 10.10.10.3   |
 
 Pick the next free IP (10.10.10.3, 10.10.10.4, …) for each new machine.
 

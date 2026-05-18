@@ -152,3 +152,6 @@
     enabled: true
     state: started
     daemon_reload: true
+
+- name: Configure services
+  ansible.builtin.include_tasks: configure_services.yml

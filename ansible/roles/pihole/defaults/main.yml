@@ -11,7 +11,7 @@ pihole_dns_hosts:
   - { ip: "10.10.1.3",   host: "grafana.homelab" }
   - { ip: "10.10.1.3",   host: "proxmox.homelab" }
   - { ip: "10.10.1.3",   host: "adyrem.duckdns.org" }
-  - { ip: "10.10.1.3",   host: "mtg.homelab" }
+  - { ip: "10.10.1.3",   host: "devbox.homelab" }
   - { ip: "10.10.1.3",   host: "jellyfin.homelab" }
   - { ip: "10.10.1.3",   host: "jellyseerr.homelab" }
   - { ip: "10.10.1.3",   host: "radarr.homelab" }

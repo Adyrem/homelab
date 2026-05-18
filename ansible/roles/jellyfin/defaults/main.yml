@@ -13,6 +13,8 @@ jellyfin_pgid: "1000"
 
 nvidia_driver_version: "580.159.03"
 
+qbittorrent_webui_password: "{{ vault_qbittorrent_password }}"
+
 jellyfin_config_dirs:
   - /containers/jellyfin/config
   - /containers/qbittorrent/config

@@ -7,15 +7,18 @@ hosts = [
 {% endfor %}
 ]
 
-hosts_str = "[" + ", ".join('"' + h + '"' for h in hosts) + "]"
+hosts_str = "[\n" + "".join('    "' + h + '",\n' for h in hosts) + "  ]"
 
 with open("/etc/pihole/pihole.toml", "r") as f:
     content = f.read()
 
+# Only replace the first hosts= (DNS custom records section, not DHCP leases)
 content = re.sub(
-    r"(?m)^( *hosts\s*=\s*)\[.*\]",
+    r"( *hosts\s*=\s*)\[.*?\]",
     r"\g<1>" + hosts_str,
     content,
+    count=1,
+    flags=re.DOTALL,
 )
 
 with open("/etc/pihole/pihole.toml", "w") as f:

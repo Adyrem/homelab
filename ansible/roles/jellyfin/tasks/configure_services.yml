@@ -1,0 +1,566 @@
+---
+# --- Media library directories ---
+
+- name: Create media library directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ jellyfin_puid }}"
+    group: "{{ jellyfin_pgid }}"
+    mode: "0755"
+  loop:
+    - /media/movies
+    - /media/tv
+
+# --- qBittorrent: pre-seed credentials on fresh install ---
+
+- name: Check if qBittorrent config exists
+  ansible.builtin.stat:
+    path: /containers/qbittorrent/config/qBittorrent/qBittorrent.conf
+  register: _qbt_conf
+
+- name: Deploy qBittorrent credential seed script
+  ansible.builtin.template:
+    src: qbittorrent_seed.py.j2
+    dest: /tmp/qbt_seed.py
+    mode: "0700"
+  when: not _qbt_conf.stat.exists
+
+- name: Pre-seed qBittorrent credentials
+  ansible.builtin.command:
+    cmd: python3 /tmp/qbt_seed.py
+  when: not _qbt_conf.stat.exists
+
+# --- Wait for services to be ready ---
+
+- name: Read Radarr config
+  ansible.builtin.slurp:
+    src: /containers/radarr/config/config.xml
+  register: _radarr_config
+
+- name: Read Sonarr config
+  ansible.builtin.slurp:
+    src: /containers/sonarr/config/config.xml
+  register: _sonarr_config
+
+- name: Read Prowlarr config
+  ansible.builtin.slurp:
+    src: /containers/prowlarr/config/config.xml
+  register: _prowlarr_config
+
+- name: Set API key facts
+  ansible.builtin.set_fact:
+    _radarr_key: "{{ (_radarr_config.content | b64decode | regex_search('<ApiKey>(.*?)</ApiKey>', '\\1'))[0] }}"
+    _sonarr_key: "{{ (_sonarr_config.content | b64decode | regex_search('<ApiKey>(.*?)</ApiKey>', '\\1'))[0] }}"
+    _prowlarr_key: "{{ (_prowlarr_config.content | b64decode | regex_search('<ApiKey>(.*?)</ApiKey>', '\\1'))[0] }}"
+
+- name: Wait for Radarr
+  ansible.builtin.uri:
+    url: "http://localhost:7878/api/v3/system/status"
+    headers:
+      X-Api-Key: "{{ _radarr_key }}"
+  register: _r
+  until: _r.status == 200
+  retries: 12
+  delay: 5
+
+- name: Wait for Sonarr
+  ansible.builtin.uri:
+    url: "http://localhost:8989/api/v3/system/status"
+    headers:
+      X-Api-Key: "{{ _sonarr_key }}"
+  register: _r
+  until: _r.status == 200
+  retries: 12
+  delay: 5
+
+- name: Wait for Prowlarr
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/system/status"
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+  register: _r
+  until: _r.status == 200
+  retries: 12
+  delay: 5
+
+# --- Prowlarr: fix TPB season search ---
+# apibay.org fulltext indexes "s05e01" as a single token, not "s05". When Prowlarr
+# appends the season number to the query (the.boys.s05), apibay returns 0 results.
+# Removing season/ep from the tv-search capability makes Prowlarr search with just
+# the show title; Sonarr's parser then filters the results by season/episode.
+# The file is locked read-only so Prowlarr cannot revert it on definition refresh.
+
+- name: Wait for Prowlarr to write TPB definition file
+  ansible.builtin.stat:
+    path: /containers/prowlarr/config/Definitions/thepiratebay.yml
+  register: _tpb_def
+  until: _tpb_def.stat.exists
+  retries: 12
+  delay: 5
+
+- name: Fix TPB tv-search to not append season to query
+  ansible.builtin.lineinfile:
+    path: /containers/prowlarr/config/Definitions/thepiratebay.yml
+    regexp: '^\s+tv-search: \[q, season, ep\]'
+    line: '    tv-search: [q]'
+  register: _tpb_fix
+
+- name: Lock TPB definition read-only to prevent Prowlarr reverting the fix
+  ansible.builtin.file:
+    path: /containers/prowlarr/config/Definitions/thepiratebay.yml
+    mode: "0444"
+
+- name: Restart Prowlarr to apply TPB definition fix
+  ansible.builtin.command:
+    cmd: docker restart prowlarr
+  changed_when: true
+  when: _tpb_fix.changed
+
+- name: Wait for Prowlarr after restart
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/system/status"
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+  register: _r
+  until: _r.status == 200
+  retries: 12
+  delay: 5
+  when: _tpb_fix.changed
+
+# --- Radarr: download client ---
+
+- name: Get Radarr download clients
+  ansible.builtin.uri:
+    url: "http://localhost:7878/api/v3/downloadclient"
+    headers:
+      X-Api-Key: "{{ _radarr_key }}"
+  register: _radarr_dc
+
+- name: Add qBittorrent to Radarr
+  ansible.builtin.uri:
+    url: "http://localhost:7878/api/v3/downloadclient"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _radarr_key }}"
+    body_format: json
+    body:
+      name: qBittorrent
+      enable: true
+      protocol: torrent
+      priority: 1
+      implementation: QBittorrent
+      configContract: QBittorrentSettings
+      fields:
+        - name: host
+          value: qbittorrent
+        - name: port
+          value: 5080
+        - name: useSsl
+          value: false
+        - name: username
+          value: admin
+        - name: password
+          value: "{{ qbittorrent_webui_password }}"
+        - name: movieCategory
+          value: radarr
+      tags: []
+    status_code: 201
+  when: _radarr_dc.json | selectattr('name', 'equalto', 'qBittorrent') | list | length == 0
+
+# --- Radarr: root folder ---
+
+- name: Get Radarr root folders
+  ansible.builtin.uri:
+    url: "http://localhost:7878/api/v3/rootfolder"
+    headers:
+      X-Api-Key: "{{ _radarr_key }}"
+  register: _radarr_rf
+
+- name: Add movies root folder to Radarr
+  ansible.builtin.uri:
+    url: "http://localhost:7878/api/v3/rootfolder"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _radarr_key }}"
+    body_format: json
+    body:
+      path: /downloads/movies
+    status_code: 201
+  when: _radarr_rf.json | selectattr('path', 'equalto', '/downloads/movies') | list | length == 0
+
+# --- Sonarr: download client ---
+
+- name: Get Sonarr download clients
+  ansible.builtin.uri:
+    url: "http://localhost:8989/api/v3/downloadclient"
+    headers:
+      X-Api-Key: "{{ _sonarr_key }}"
+  register: _sonarr_dc
+
+- name: Add qBittorrent to Sonarr
+  ansible.builtin.uri:
+    url: "http://localhost:8989/api/v3/downloadclient"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _sonarr_key }}"
+    body_format: json
+    body:
+      name: qBittorrent
+      enable: true
+      protocol: torrent
+      priority: 1
+      implementation: QBittorrent
+      configContract: QBittorrentSettings
+      fields:
+        - name: host
+          value: qbittorrent
+        - name: port
+          value: 5080
+        - name: useSsl
+          value: false
+        - name: username
+          value: admin
+        - name: password
+          value: "{{ qbittorrent_webui_password }}"
+        - name: tvCategory
+          value: sonarr
+      tags: []
+    status_code: 201
+  when: _sonarr_dc.json | selectattr('name', 'equalto', 'qBittorrent') | list | length == 0
+
+# --- Sonarr: root folder ---
+
+- name: Get Sonarr root folders
+  ansible.builtin.uri:
+    url: "http://localhost:8989/api/v3/rootfolder"
+    headers:
+      X-Api-Key: "{{ _sonarr_key }}"
+  register: _sonarr_rf
+
+- name: Add TV root folder to Sonarr
+  ansible.builtin.uri:
+    url: "http://localhost:8989/api/v3/rootfolder"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _sonarr_key }}"
+    body_format: json
+    body:
+      path: /downloads/tv
+    status_code: 201
+  when: _sonarr_rf.json | selectattr('path', 'equalto', '/downloads/tv') | list | length == 0
+
+# --- Prowlarr: apps ---
+
+- name: Get Prowlarr applications
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/applications"
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+  register: _prowlarr_apps
+
+- name: Add Radarr to Prowlarr
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/applications"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+    body_format: json
+    body:
+      name: Radarr
+      syncLevel: fullSync
+      implementation: Radarr
+      configContract: RadarrSettings
+      fields:
+        - name: prowlarrUrl
+          value: "http://prowlarr:9696"
+        - name: baseUrl
+          value: "http://radarr:7878"
+        - name: apiKey
+          value: "{{ _radarr_key }}"
+        - name: syncCategories
+          value: [2000, 2010, 2020, 2030, 2040, 2045, 2050, 2060]
+      tags: []
+    status_code: 201
+  when: _prowlarr_apps.json | selectattr('name', 'equalto', 'Radarr') | list | length == 0
+
+- name: Add Sonarr to Prowlarr
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/applications"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+    body_format: json
+    body:
+      name: Sonarr
+      syncLevel: fullSync
+      implementation: Sonarr
+      configContract: SonarrSettings
+      fields:
+        - name: prowlarrUrl
+          value: "http://prowlarr:9696"
+        - name: baseUrl
+          value: "http://sonarr:8989"
+        - name: apiKey
+          value: "{{ _sonarr_key }}"
+        - name: syncCategories
+          value: [5000, 5010, 5020, 5030, 5040, 5045, 5050, 5060, 5070, 5080]
+      tags: []
+    status_code: 201
+  when: _prowlarr_apps.json | selectattr('name', 'equalto', 'Sonarr') | list | length == 0
+
+# --- Prowlarr: FlareSolverr proxy ---
+
+- name: Get Prowlarr indexer proxies
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/indexerproxy"
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+  register: _prowlarr_proxies
+
+- name: Add FlareSolverr proxy to Prowlarr
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/indexerproxy"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+    body_format: json
+    body:
+      name: FlareSolverr
+      implementation: FlareSolverr
+      configContract: FlareSolverrSettings
+      tags: [1]
+      fields:
+        - name: host
+          value: "http://flaresolverr:8191"
+        - name: requestTimeout
+          value: 60
+    status_code: 201
+  when: _prowlarr_proxies.json | selectattr('name', 'equalto', 'FlareSolverr') | list | length == 0
+
+# --- Prowlarr: indexers ---
+
+- name: Get Prowlarr indexers
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/indexer"
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+  register: _prowlarr_indexers
+
+- name: Add YTS indexer
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/indexer"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+    body_format: json
+    body:
+      name: YTS
+      enable: true
+      appProfileId: 1
+      priority: 25
+      implementation: Cardigann
+      configContract: CardigannSettings
+      tags: []
+      fields:
+        - name: definitionFile
+          value: yts
+        - name: baseSettings.limitsUnit
+          value: 0
+        - name: torrentBaseSettings.preferMagnetUrl
+          value: false
+        - name: apiurl
+          value: movies-api.accel.li
+    status_code: 201
+  when: _prowlarr_indexers.json | selectattr('name', 'equalto', 'YTS') | list | length == 0
+
+- name: Add The Pirate Bay indexer
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/indexer"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+    body_format: json
+    body:
+      name: The Pirate Bay
+      enable: true
+      appProfileId: 1
+      priority: 25
+      implementation: Cardigann
+      configContract: CardigannSettings
+      tags: []
+      fields:
+        - name: definitionFile
+          value: thepiratebay
+        - name: baseSettings.limitsUnit
+          value: 0
+        - name: torrentBaseSettings.preferMagnetUrl
+          value: false
+        - name: apiurl
+          value: apibay.org
+    status_code: 201
+  when: _prowlarr_indexers.json | selectattr('name', 'equalto', 'The Pirate Bay') | list | length == 0
+
+- name: Add EZTV indexer
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/indexer"
+    method: POST
+    timeout: 90
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+    body_format: json
+    body:
+      name: EZTV
+      enable: true
+      appProfileId: 1
+      priority: 25
+      implementation: Cardigann
+      configContract: CardigannSettings
+      tags: [1]
+      fields:
+        - name: definitionFile
+          value: eztv
+        - name: baseSettings.limitsUnit
+          value: 0
+        - name: torrentBaseSettings.preferMagnetUrl
+          value: false
+    status_code: 201
+  when: _prowlarr_indexers.json | selectattr('name', 'equalto', 'EZTV') | list | length == 0
+  ignore_errors: true
+
+- name: Add 1337x indexer
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/indexer"
+    method: POST
+    timeout: 90
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+    body_format: json
+    body:
+      name: 1337x
+      enable: true
+      appProfileId: 1
+      priority: 25
+      implementation: Cardigann
+      configContract: CardigannSettings
+      tags: [1]
+      fields:
+        - name: definitionFile
+          value: 1337x
+        - name: baseSettings.limitsUnit
+          value: 0
+        - name: torrentBaseSettings.preferMagnetUrl
+          value: false
+        - name: downloadlink
+          value: 0
+        - name: downloadlink2
+          value: 1
+        - name: sort
+          value: 2
+        - name: type
+          value: 1
+    status_code: 201
+  when: _prowlarr_indexers.json | selectattr('name', 'equalto', '1337x') | list | length == 0
+  ignore_errors: true
+
+- name: Sync Prowlarr indexers to apps
+  ansible.builtin.uri:
+    url: "http://localhost:9696/api/v1/applications/syncindexers"
+    method: GET
+    headers:
+      X-Api-Key: "{{ _prowlarr_key }}"
+    status_code: [200, 202]
+  ignore_errors: true
+
+# --- Jellyseerr: connect Sonarr and Radarr ---
+
+- name: Check if Jellyseerr is initialized
+  ansible.builtin.stat:
+    path: /containers/jellyseerr/config/settings.json
+  register: _js_settings
+
+- name: Read Jellyseerr settings
+  ansible.builtin.slurp:
+    src: /containers/jellyseerr/config/settings.json
+  register: _js_raw
+  when: _js_settings.stat.exists
+
+- name: Set Jellyseerr API key fact
+  ansible.builtin.set_fact:
+    _js_key: "{{ (_js_raw.content | b64decode | from_json).main.apiKey }}"
+  when: _js_settings.stat.exists
+
+- name: Get Jellyseerr Sonarr servers
+  ansible.builtin.uri:
+    url: "http://localhost:5055/api/v1/settings/sonarr"
+    headers:
+      X-Api-Key: "{{ _js_key }}"
+  register: _js_sonarr
+  when: _js_settings.stat.exists
+
+- name: Configure Sonarr in Jellyseerr
+  ansible.builtin.uri:
+    url: "http://localhost:5055/api/v1/settings/sonarr/{{ '0' if (_js_sonarr.json | length == 0) else (_js_sonarr.json[0].id | string) }}"
+    method: "{{ 'POST' if (_js_sonarr.json | length == 0) else 'PUT' }}"
+    headers:
+      X-Api-Key: "{{ _js_key }}"
+    body_format: json
+    body:
+      name: sonarr
+      hostname: sonarr
+      port: 8989
+      apiKey: "{{ _sonarr_key }}"
+      useSsl: false
+      baseUrl: ""
+      activeProfileId: 4
+      activeProfileName: HD-1080p
+      activeDirectory: /downloads/tv
+      tags: []
+      animeTags: []
+      is4k: false
+      isDefault: true
+      enableSeasonFolders: true
+      syncEnabled: false
+      preventSearch: false
+      tagRequests: false
+    status_code: [200, 201]
+  when: >
+    _js_settings.stat.exists and
+    (_js_sonarr.json | length == 0 or not _js_sonarr.json[0].isDefault)
+
+- name: Get Jellyseerr Radarr servers
+  ansible.builtin.uri:
+    url: "http://localhost:5055/api/v1/settings/radarr"
+    headers:
+      X-Api-Key: "{{ _js_key }}"
+  register: _js_radarr
+  when: _js_settings.stat.exists
+
+- name: Configure Radarr in Jellyseerr
+  ansible.builtin.uri:
+    url: "http://localhost:5055/api/v1/settings/radarr/{{ '0' if (_js_radarr.json | length == 0) else (_js_radarr.json[0].id | string) }}"
+    method: "{{ 'POST' if (_js_radarr.json | length == 0) else 'PUT' }}"
+    headers:
+      X-Api-Key: "{{ _js_key }}"
+    body_format: json
+    body:
+      name: radarr
+      hostname: radarr
+      port: 7878
+      apiKey: "{{ _radarr_key }}"
+      useSsl: false
+      baseUrl: ""
+      activeProfileId: 4
+      activeProfileName: HD-1080p
+      activeDirectory: /downloads/movies
+      is4k: false
+      minimumAvailability: released
+      tags: []
+      isDefault: true
+      syncEnabled: false
+      preventSearch: false
+      tagRequests: false
+    status_code: [200, 201]
+  when: >
+    _js_settings.stat.exists and
+    (_js_radarr.json | length == 0 or not _js_radarr.json[0].isDefault)

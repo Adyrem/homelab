@@ -60,6 +60,41 @@
   when: traefik_version not in (traefik_installed_version.stdout | default(''))
   notify: Restart traefik
 
+- name: Create traefik certs directory
+  ansible.builtin.file:
+    path: /etc/traefik/certs
+    state: directory
+    owner: traefik
+    group: traefik
+    mode: "0750"
+
+- name: Copy homelab TLS certificate
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../certs/wildcard.homelab.pem"
+    dest: /etc/traefik/certs/homelab.pem
+    owner: traefik
+    group: traefik
+    mode: "0640"
+  notify: Restart traefik
+
+- name: Copy homelab TLS key
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../certs/wildcard.homelab-key.pem"
+    dest: /etc/traefik/certs/homelab-key.pem
+    owner: traefik
+    group: traefik
+    mode: "0640"
+  notify: Restart traefik
+
+- name: Write Traefik TLS config
+  ansible.builtin.template:
+    src: tls.yml.j2
+    dest: /etc/traefik/conf.d/tls.yml
+    owner: traefik
+    group: traefik
+    mode: "0640"
+  notify: Restart traefik
+
 - name: Write Traefik static config
   ansible.builtin.template:
     src: traefik.yml.j2

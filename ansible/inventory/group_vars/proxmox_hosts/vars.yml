@@ -15,3 +15,6 @@ wireguard_peers:
   - name: fedora
     public_key: "ivtchk9pxEwYwusMzmn7Uq89LFV3uB1I8iYto0EJuy4="
     allowed_ips: 10.10.10.2/32
+  - name: phone
+    public_key: "72fMMJTC/Ew38E61as+oEjFKsgKk4DAK8FqDuQOAcEU="
+    allowed_ips: 10.10.10.3/32
