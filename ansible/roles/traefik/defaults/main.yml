@@ -13,6 +13,12 @@ traefik_services:
     public_host: "adyrem.duckdns.org"
     public_path: "/git"
     strip_prefix: "/git"
+  - name: mtg
+    host: "mtg.homelab"
+    backend: "http://10.10.2.10:3000"
+    public_host: "adyrem.duckdns.org"
+    public_path: "/mtg"
+    strip_prefix: "/mtg"
   - name: grafana
     host: "grafana.homelab"
     backend: "http://10.10.1.137:3000"
