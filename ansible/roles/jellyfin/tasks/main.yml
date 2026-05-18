@@ -104,9 +104,9 @@
     path: /usr/lib/x86_64-linux-gnu/libcuda.so.{{ nvidia_driver_version }}
   register: _nvidia_libs
 
-- name: Copy NVIDIA installer from Proxmox host to LXC
-  ansible.builtin.copy:
-    src: /tmp/nvidia-580.run
+- name: Download NVIDIA installer on LXC
+  ansible.builtin.get_url:
+    url: "https://download.nvidia.com/XFree86/Linux-x86_64/{{ nvidia_driver_version }}/NVIDIA-Linux-x86_64-{{ nvidia_driver_version }}.run"
     dest: /tmp/nvidia.run
     mode: "0755"
   when: not _nvidia_libs.stat.exists
