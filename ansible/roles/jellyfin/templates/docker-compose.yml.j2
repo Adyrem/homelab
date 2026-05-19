@@ -11,6 +11,7 @@ services:
     volumes:
       - /containers/jellyfin/config:/config
       - /media:/media
+      - /media/transcodes:/cache
     ports:
       - "8096:8096"
     restart: unless-stopped

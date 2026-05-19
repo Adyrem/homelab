@@ -11,6 +11,7 @@
   loop:
     - /media/movies
     - /media/tv
+    - /media/transcodes
 
 # --- qBittorrent: pre-seed credentials on fresh install ---
 

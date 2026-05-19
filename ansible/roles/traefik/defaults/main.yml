@@ -17,6 +17,12 @@ traefik_services:
     host: "devbox.homelab"
     backend: "http://10.10.2.10:4001"
     public_host: "adyrem.duckdns.org"
+  - name: anki
+    host: "anki.homelab"
+    backend: "http://10.10.2.10:4002"
+    public_host: "adyrem.duckdns.org"
+    public_path: "/Anki"
+    strip_prefix: "/Anki"
   - name: mtg
     host: "mtg.homelab"
     backend: "http://10.10.2.10:3000"
