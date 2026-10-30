@@ -59,8 +59,15 @@
 - name: Set runner labels in config
   ansible.builtin.replace:
     path: /etc/act_runner/config.yml
-    regexp: '^  labels:$'
-    replace: "  labels:\n    - \"native:host\""
+    regexp: '^  labels:\n(?!    - "native:host"\n)'
+    replace: "  labels:\n    - \"native:host\"\n"
+  notify: Restart act_runner
+
+- name: Cap memory of docker job containers
+  ansible.builtin.replace:
+    path: /etc/act_runner/config.yml
+    regexp: '^  options:.*$'
+    replace: "  options: \"--memory={{ gitea_runner_memory_mb }}m --memory-swap={{ gitea_runner_memory_mb }}m\""
   notify: Restart act_runner
 
 - name: Register runner with Gitea
@@ -92,6 +99,7 @@
       ExecStart=/usr/local/bin/act_runner daemon --config /etc/act_runner/config.yml
       Restart=always
       RestartSec=5
+      MemoryMax={{ gitea_runner_memory_mb }}M
 
       [Install]
       WantedBy=multi-user.target
