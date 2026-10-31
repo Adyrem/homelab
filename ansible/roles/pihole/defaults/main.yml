@@ -5,17 +5,24 @@ pihole_dns_upstream2: "8.8.4.4"
 pihole_local_domain: "homelab"
 pihole_interface: "eth0"
 pihole_dns_hosts:
-  - { ip: "10.10.1.2",   host: "pihole.homelab" }
+  - { ip: "10.10.1.3",   host: "pihole.homelab" }
   - { ip: "10.10.1.3",   host: "traefik.homelab" }
-  - { ip: "10.10.1.125", host: "gitea.homelab" }
+  - { ip: "10.10.1.3",   host: "gitea.homelab" }
   - { ip: "10.10.1.3",   host: "grafana.homelab" }
   - { ip: "10.10.1.3",   host: "proxmox.homelab" }
   - { ip: "10.10.1.3",   host: "adyrem.duckdns.org" }
   - { ip: "10.10.1.3",   host: "anki.homelab" }
   - { ip: "10.10.1.3",   host: "devbox.homelab" }
+  - { ip: "10.10.1.3",   host: "mtg.homelab" }
   - { ip: "10.10.1.3",   host: "jellyfin.homelab" }
   - { ip: "10.10.1.3",   host: "jellyseerr.homelab" }
   - { ip: "10.10.1.3",   host: "radarr.homelab" }
   - { ip: "10.10.1.3",   host: "sonarr.homelab" }
   - { ip: "10.10.1.3",   host: "prowlarr.homelab" }
   - { ip: "10.10.1.3",   host: "qbittorrent.homelab" }
+# Extra pihole.toml settings, applied with `pihole-FTL --config <key> <value>`.
+# FTL answers its own hostname (pihole.homelab) with its interface address and
+# ignores the dns.hosts entry above, which bypasses Traefik and its certificate.
+pihole_ftl_config:
+  dns.reply.host.force4: "true"
+  dns.reply.host.IPv4: "10.10.1.3"

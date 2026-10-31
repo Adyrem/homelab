@@ -15,16 +15,20 @@
     state: directory
     mode: "0755"
 
+- name: Check if Pi-hole is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/pihole
+  register: pihole_binary
+
+# setupVars.conf is the v5 preseed for the unattended installer. Only write it
+# for a fresh install: when Pi-hole v6 finds it, `pihole -up` re-runs the v5->v6
+# migration and overwrites pihole.toml (local DNS hosts, web password) with it.
 - name: Write Pi-hole setup vars
   ansible.builtin.template:
     src: setupVars.conf.j2
     dest: /etc/pihole/setupVars.conf
     mode: "0644"
-
-- name: Check if Pi-hole is already installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/pihole
-  register: pihole_binary
+  when: not pihole_binary.stat.exists
 
 - name: Download Pi-hole installer
   ansible.builtin.get_url:
@@ -50,6 +54,22 @@
     dest: /tmp/pihole_update_hosts.py
     mode: "0755"
   notify: Update pihole hosts
+
+- name: Read Pi-hole FTL settings
+  ansible.builtin.command:
+    cmd: "pihole-FTL --config {{ item.key }}"
+  loop: "{{ pihole_ftl_config | dict2items }}"
+  register: pihole_ftl_current
+  changed_when: false
+
+- name: Apply Pi-hole FTL settings
+  ansible.builtin.command:
+    cmd: "pihole-FTL --config {{ item.item.key }} {{ item.item.value }}"
+  loop: "{{ pihole_ftl_current.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item.stdout != item.item.value
+  notify: Restart pihole-FTL
 
 - name: Ensure pihole-FTL is running
   ansible.builtin.service:
