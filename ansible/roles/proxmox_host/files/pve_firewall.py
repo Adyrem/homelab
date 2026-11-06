@@ -14,6 +14,7 @@ DESIRED = [
     {'proto': 'tcp', 'source': '192.168.1.0/24', 'dport': '3128'},
     {'proto': 'udp', 'source': '10.10.0.0/16',   'dport': '53'},
     {'proto': 'tcp', 'source': '10.10.0.0/16',   'dport': '53'},
+    {'proto': 'udp', 'source': '10.10.0.0/16',   'dport': '67'},
     {'proto': 'udp',                              'dport': '51820'},
     {'proto': 'icmp'},
 ]
