@@ -11,6 +11,19 @@
     state: present
     update_cache: true
 
+# npm >= 12 skips install scripts unless allowed; Claude Code's postinstall
+# places the native binary, without it `claude` fails to start.
+- name: Get npm global allow-scripts setting
+  ansible.builtin.command:
+    cmd: npm config get allow-scripts --location=global
+  register: npm_allow_scripts
+  changed_when: false
+
+- name: Allow the Claude Code install script
+  ansible.builtin.command:
+    cmd: npm config set allow-scripts=@anthropic-ai/claude-code --location=global
+  when: "'@anthropic-ai/claude-code' not in npm_allow_scripts.stdout"
+
 - name: Install Claude Code CLI
   community.general.npm:
     name: "@anthropic-ai/claude-code"

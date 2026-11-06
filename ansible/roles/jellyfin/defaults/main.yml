@@ -1,10 +1,10 @@
 ---
 jellyfin_version: "10.10.7"
-qbittorrent_version: "5.1.4"
-radarr_version: "6.0.4"
-sonarr_version: "4.0.16"
-prowlarr_version: "2.3.0"
-flaresolverr_version: "v3.3.21"
+qbittorrent_version: "5.3.0"
+radarr_version: "6.4.4"
+sonarr_version: "4.0.20"
+prowlarr_version: "2.7.0"
+flaresolverr_version: "v3.5.2"
 jellyseerr_version: "2.5.2"
 
 jellyfin_timezone: "Europe/Zurich"
