@@ -10,6 +10,12 @@
     mode: "0440"
     validate: visudo -cf %s
 
+- name: Set admin user password
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    password: "{{ admin_password | password_hash('sha512') }}"
+    update_password: always
+
 - name: Ensure admin SSH key is authorized
   ansible.posix.authorized_key:
     user: "{{ admin_user }}"
