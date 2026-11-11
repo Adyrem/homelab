@@ -28,5 +28,10 @@ chmod +x /tmp/generate-config.sh
 echo "==> Generating config for $DEVICE..."
 /tmp/generate-config.sh "$DEVICE"
 
+echo "==> Setting the adyrem password..."
+read -rsp "Password for adyrem: " PASSWORD < /dev/tty; echo
+sed -i "s|CHANGEME|$(openssl passwd -6 -stdin <<< "$PASSWORD")|" /tmp/config.json
+unset PASSWORD
+
 echo "==> Starting archinstall..."
 archinstall --config /tmp/config.json

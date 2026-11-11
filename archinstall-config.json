@@ -110,7 +110,7 @@
     "version": "4.1",
     "users": [
         {
-            "enc_password": "$y$j9T$pqMooSvLvxBg2YP7eCQlq/$Ae8.dvSYB817bQkj5w9S4wu9OtWIq.p/pbWY6A/ythD",
+            "enc_password": "CHANGEME",
             "groups": ["wheel"],
             "sudo": true,
             "username": "adyrem"
