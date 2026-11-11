@@ -1,0 +1,5 @@
+---
+- name: Deploy PairDrop
+  hosts: pairdrop_servers
+  roles:
+    - pairdrop

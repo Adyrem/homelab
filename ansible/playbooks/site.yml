@@ -1,6 +1,6 @@
 ---
 - name: Common setup for all Arch VMs
-  hosts: all:!pihole_servers:!traefik_servers
+  hosts: all:!pihole_servers:!traefik_servers:!pairdrop_servers
   roles:
     - common
     - node_exporter
@@ -25,3 +25,8 @@
   hosts: traefik_servers
   roles:
     - traefik
+
+- name: PairDrop
+  hosts: pairdrop_servers
+  roles:
+    - pairdrop

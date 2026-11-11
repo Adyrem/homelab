@@ -1,0 +1,88 @@
+---
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - nftables
+    state: present
+    update_cache: true
+
+# --- Firewall ---
+# Guests run with the Proxmox per-guest firewall off (its fwbr bridge breaks
+# their traffic), so the proxy-only rule for PairDrop lives in the container.
+
+- name: Deploy nftables config
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    mode: "0755"
+  notify: Reload nftables
+
+- name: Enable and start nftables
+  ansible.builtin.systemd:
+    name: nftables
+    enabled: true
+    state: started
+
+# --- Docker ---
+
+- name: Add Docker GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /usr/share/keyrings/docker.asc
+    mode: "0644"
+
+- name: Add Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/usr/share/keyrings/docker.asc]
+      https://download.docker.com/linux/debian {{ ansible_facts['distribution_release'] }} stable
+    filename: docker
+    state: present
+
+- name: Install Docker and compose plugin
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Enable and start Docker
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+# --- PairDrop ---
+
+- name: Create stack directory
+  ansible.builtin.file:
+    path: /opt/pairdrop
+    state: directory
+    mode: "0755"
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/pairdrop/docker-compose.yml
+    mode: "0644"
+  notify: Restart pairdrop stack
+
+- name: Deploy systemd service
+  ansible.builtin.template:
+    src: pairdrop-stack.service.j2
+    dest: /etc/systemd/system/pairdrop-stack.service
+    mode: "0644"
+  notify: Restart pairdrop stack
+
+- name: Enable and start pairdrop stack service
+  ansible.builtin.systemd:
+    name: pairdrop-stack
+    enabled: true
+    state: started
+    daemon_reload: true

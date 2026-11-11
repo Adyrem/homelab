@@ -1,0 +1,14 @@
+name: pairdrop
+services:
+  pairdrop:
+    image: lscr.io/linuxserver/pairdrop:{{ pairdrop_version }}
+    container_name: pairdrop
+    # Host networking so the nftables input rule applies to port {{ pairdrop_port }}
+    network_mode: host
+    environment:
+      - TZ={{ pairdrop_timezone }}
+      - RATE_LIMIT=1 # one proxy (Traefik) in front
+      - WS_FALLBACK=true # relay through the server when WebRTC can't connect
+      - RTC_CONFIG=false
+      - DEBUG_MODE=false
+    restart: unless-stopped

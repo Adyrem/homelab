@@ -53,6 +53,10 @@ traefik_services:
   - name: qbittorrent
     host: "qbittorrent.homelab"
     backend: "http://10.10.1.50:5080"
+  - name: pairdrop
+    host: "pairdrop.homelab"
+    backend: "http://10.10.1.4:3000"
+    public_host: "drop.adyrem.duckdns.org"
   - name: proxmox
     host: "proxmox.homelab"
     backend: "https://192.168.1.10:8006"

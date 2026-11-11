@@ -1,0 +1,16 @@
+#!/usr/sbin/nft -f
+# Managed by Ansible (pairdrop role). Only touches its own table, so Docker's
+# rules survive a reload.
+
+table inet pairdrop
+flush table inet pairdrop
+
+table inet pairdrop {
+  chain input {
+    type filter hook input priority 0; policy accept;
+
+    # Only the reverse proxy may reach PairDrop
+    tcp dport {{ pairdrop_port }} ip saddr != {{ pairdrop_proxy_ip }} drop
+    meta nfproto ipv6 tcp dport {{ pairdrop_port }} drop
+  }
+}

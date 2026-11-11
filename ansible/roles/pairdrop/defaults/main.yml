@@ -1,0 +1,7 @@
+---
+pairdrop_version: "1.11.2"
+pairdrop_port: 3000
+pairdrop_timezone: "Europe/Zurich"
+# PairDrop groups peers by the X-Forwarded-For address, so only the reverse
+# proxy may reach it; anyone else could claim to be on another network.
+pairdrop_proxy_ip: "10.10.1.3"
