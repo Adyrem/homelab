@@ -9,6 +9,8 @@ services:
       - TZ={{ pairdrop_timezone }}
       - RATE_LIMIT=1 # one proxy (Traefik) in front
       - WS_FALLBACK=true # relay through the server when WebRTC can't connect
-      - RTC_CONFIG=false
+      - RTC_CONFIG=/rtc_config.json # STUN + the LAN TURN relay
       - DEBUG_MODE=false
+    volumes:
+      - ./rtc_config.json:/rtc_config.json:ro
     restart: unless-stopped

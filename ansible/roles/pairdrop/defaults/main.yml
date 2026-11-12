@@ -5,3 +5,22 @@ pairdrop_timezone: "Europe/Zurich"
 # PairDrop groups peers by the X-Forwarded-For address, so only the reverse
 # proxy may reach it; anyone else could claim to be on another network.
 pairdrop_proxy_ip: "10.10.1.3"
+
+# TURN relay for devices whose direct WebRTC connection fails (PairDrop then
+# hides the peer; its WS fallback only covers browsers without WebRTC).
+# Listens on the CT's home-LAN NIC (eth1), so it only serves the home network.
+pairdrop_turn_iface: "eth1"
+pairdrop_turn_ip: "192.168.1.11"
+pairdrop_turn_port: 3478
+pairdrop_turn_min_port: 49160
+pairdrop_turn_max_port: 49200
+pairdrop_turn_user: "pairdrop"
+pairdrop_turn_password: "{{ vault_pairdrop_turn_password }}"
+# Clients and relay peers allowed: home LAN and WireGuard clients
+pairdrop_turn_allowed_nets:
+  - { cidr: "192.168.1.0/24", range: "192.168.1.0-192.168.1.255" }
+  - { cidr: "10.10.10.0/24", range: "10.10.10.0-10.10.10.255" }
+# Homelab guests reach the LAN masqueraded as the Proxmox host; keep them out
+pairdrop_turn_denied_clients:
+  - "192.168.1.10"
+pairdrop_turn_max_bps: 50000000

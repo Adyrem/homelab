@@ -58,6 +58,46 @@
     enabled: true
     state: started
 
+# --- TURN relay (coturn) ---
+
+- name: Install coturn
+  ansible.builtin.apt:
+    name: coturn
+    state: present
+
+- name: Deploy coturn config
+  ansible.builtin.template:
+    src: turnserver.conf.j2
+    dest: /etc/turnserver.conf
+    owner: root
+    group: turnserver
+    mode: "0640"
+  notify: Restart coturn
+
+# coturn binds to the LAN address, which must exist before it starts
+- name: Create coturn service override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/coturn.service.d
+    state: directory
+    mode: "0755"
+
+- name: Start coturn after the network is up
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/coturn.service.d/override.conf
+    content: |
+      [Unit]
+      Wants=network-online.target
+      After=network-online.target
+    mode: "0644"
+  notify: Restart coturn
+
+- name: Enable and start coturn
+  ansible.builtin.systemd:
+    name: coturn
+    enabled: true
+    state: started
+    daemon_reload: true
+
 # --- PairDrop ---
 
 - name: Create stack directory
@@ -65,6 +105,13 @@
     path: /opt/pairdrop
     state: directory
     mode: "0755"
+
+- name: Deploy WebRTC config
+  ansible.builtin.template:
+    src: rtc_config.json.j2
+    dest: /opt/pairdrop/rtc_config.json
+    mode: "0644"
+  notify: Restart pairdrop stack
 
 - name: Deploy docker-compose.yml
   ansible.builtin.template:

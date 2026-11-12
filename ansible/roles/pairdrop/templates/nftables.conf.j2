@@ -6,11 +6,32 @@ table inet pairdrop
 flush table inet pairdrop
 
 table inet pairdrop {
+  set turn_clients {
+    type ipv4_addr
+    flags interval
+    elements = { {{ pairdrop_turn_allowed_nets | map(attribute='cidr') | join(', ') }} }
+  }
+
   chain input {
     type filter hook input priority 0; policy accept;
 
     # Only the reverse proxy may reach PairDrop
     tcp dport {{ pairdrop_port }} ip saddr != {{ pairdrop_proxy_ip }} drop
     meta nfproto ipv6 tcp dport {{ pairdrop_port }} drop
+
+    # Home-LAN NIC: TURN only, from the home LAN and VPN clients
+    iifname "{{ pairdrop_turn_iface }}" ct state established,related accept
+    iifname "{{ pairdrop_turn_iface }}" icmp type echo-request accept
+    iifname "{{ pairdrop_turn_iface }}" ip saddr { {{ pairdrop_turn_denied_clients | join(', ') }} } drop
+    iifname "{{ pairdrop_turn_iface }}" ip saddr @turn_clients udp dport { {{ pairdrop_turn_port }}, {{ pairdrop_turn_min_port }}-{{ pairdrop_turn_max_port }} } accept
+    iifname "{{ pairdrop_turn_iface }}" ip saddr @turn_clients tcp dport {{ pairdrop_turn_port }} accept
+    iifname "{{ pairdrop_turn_iface }}" drop
+  }
+
+  # Docker enables IP forwarding; never route between the home LAN and the homelab
+  chain forward {
+    type filter hook forward priority 0; policy accept;
+    iifname "{{ pairdrop_turn_iface }}" drop
+    oifname "{{ pairdrop_turn_iface }}" drop
   }
 }

@@ -1,0 +1,26 @@
+# Managed by Ansible (pairdrop role). TURN relay for PairDrop on the home LAN.
+listening-ip={{ pairdrop_turn_ip }}
+relay-ip={{ pairdrop_turn_ip }}
+listening-port={{ pairdrop_turn_port }}
+min-port={{ pairdrop_turn_min_port }}
+max-port={{ pairdrop_turn_max_port }}
+
+realm=pairdrop
+lt-cred-mech
+user={{ pairdrop_turn_user }}:{{ pairdrop_turn_password }}
+fingerprint
+
+# WebRTC data is end-to-end encrypted already
+no-tls
+no-dtls
+
+# Only relay to the home LAN and VPN clients, never to the internet or the homelab
+no-multicast-peers
+denied-peer-ip=0.0.0.0-255.255.255.255
+{% for net in pairdrop_turn_allowed_nets %}
+allowed-peer-ip={{ net.range }}
+{% endfor %}
+max-bps={{ pairdrop_turn_max_bps }}
+
+no-cli
+syslog

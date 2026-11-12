@@ -4,6 +4,12 @@
     name: nftables
     state: reloaded
 
+- name: Restart coturn
+  ansible.builtin.systemd:
+    name: coturn
+    state: restarted
+    daemon_reload: true
+
 - name: Restart pairdrop stack
   ansible.builtin.systemd:
     name: pairdrop-stack
