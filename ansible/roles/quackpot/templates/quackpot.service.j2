@@ -14,7 +14,7 @@ ExecStart=/usr/local/bin/deno run --no-prompt \
     --allow-net=0.0.0.0:{{ quackpot_port }} \
     --allow-read={{ quackpot_dir }},/etc/quackpot/config.json,{{ quackpot_data_dir }} \
     --allow-write={{ quackpot_data_dir }} \
-    --allow-env=QUACKPOT_HOSTNAME,QUACKPOT_PORT,QUACKPOT_DB,QUACKPOT_ADMIN_TOKEN,QUACKPOT_CONFIG,QUACKPOT_TRUSTED_PROXIES \
+    --allow-env=QUACKPOT_HOSTNAME,QUACKPOT_PORT,QUACKPOT_DB,QUACKPOT_ADMIN_TOKEN,QUACKPOT_CONFIG,QUACKPOT_TRUSTED_PROXIES,QUACKPOT_OPEN_ROOMS \
     {{ quackpot_dir }}/src/main.ts
 Restart=on-failure
 RestartSec=5

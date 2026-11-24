@@ -8,8 +8,11 @@ quackpot_dir: /opt/quackpot
 quackpot_data_dir: /var/lib/quackpot
 # Only the reverse proxy may reach it, and only its X-Forwarded-For is believed
 quackpot_proxy_ip: "10.10.1.3"
-# Needed to create rooms (the StreamOverlay plugin asks for it once)
+# Creates rooms without any limit; nobody needs it while anyone may create rooms
 quackpot_admin_token: "{{ vault_quackpot_admin_token }}"
+# Anyone may create a room on the start page or from the plugin (3 a day per address, 50 a day in all);
+# rooms whose plugin never connects are removed after a week
+quackpot_open_rooms: true
 # Overrides for the game's and the duck's numbers, written to /etc/quackpot/config.json;
 # see quackpot.config.example.json in the quackpot repo. Empty: the built-in defaults.
 quackpot_game_config: {}
