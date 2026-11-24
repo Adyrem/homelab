@@ -1,0 +1,15 @@
+#!/usr/sbin/nft -f
+# Managed by Ansible (quackpot role). Only touches its own table.
+
+table inet quackpot
+flush table inet quackpot
+
+table inet quackpot {
+  chain input {
+    type filter hook input priority 0; policy accept;
+
+    # Only the reverse proxy may reach Quackpot
+    tcp dport {{ quackpot_port }} ip saddr != {{ quackpot_proxy_ip }} drop
+    meta nfproto ipv6 tcp dport {{ quackpot_port }} drop
+  }
+}

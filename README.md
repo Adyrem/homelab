@@ -15,6 +15,7 @@ Proxmox VE homelab running on an Intel i7-8700 / 32 GB machine. All infrastructu
 | pihole | LXC 103 | 10.10.1.2 | DNS + ad blocking |
 | traefik | LXC 104 | 10.10.1.3 | Reverse proxy + Let's Encrypt |
 | pairdrop | LXC 107 | 10.10.1.4 | Browser file transfer between devices (https://drop.adyrem.duckdns.org) |
+| quackpot | LXC 108 | 10.10.1.5 | Quackpot donation page and server for the StreamOverlay plugin (https://quackpot.adyrem.duckdns.org) |
 | claude-code | VM 105 | 10.10.2.10 | Persistent Claude Code session VM |
 
 **Networks:**

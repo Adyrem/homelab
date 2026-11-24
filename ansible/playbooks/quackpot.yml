@@ -1,0 +1,5 @@
+---
+- name: Deploy Quackpot
+  hosts: quackpot_servers
+  roles:
+    - quackpot

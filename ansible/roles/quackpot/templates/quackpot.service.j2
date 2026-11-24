@@ -1,0 +1,35 @@
+# Managed by Ansible (quackpot role)
+[Unit]
+Description=Quackpot server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=quackpot
+Group=quackpot
+EnvironmentFile=/etc/quackpot/env
+WorkingDirectory={{ quackpot_dir }}
+# Deno's own permissions: listen on the port, read the code and config, write only the database
+ExecStart=/usr/local/bin/deno run --no-prompt \
+    --allow-net=0.0.0.0:{{ quackpot_port }} \
+    --allow-read={{ quackpot_dir }},/etc/quackpot/config.json,{{ quackpot_data_dir }} \
+    --allow-write={{ quackpot_data_dir }} \
+    --allow-env=QUACKPOT_HOSTNAME,QUACKPOT_PORT,QUACKPOT_DB,QUACKPOT_ADMIN_TOKEN,QUACKPOT_CONFIG,QUACKPOT_TRUSTED_PROXIES \
+    {{ quackpot_dir }}/src/main.ts
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths={{ quackpot_data_dir }}
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

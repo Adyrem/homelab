@@ -7,6 +7,10 @@ entryPoints:
     address: ":{{ traefik_http_port }}"
   websecure:
     address: ":{{ traefik_https_port }}"
+    # uploads to Quackpot (up to 8 MB) need longer than the default 60 s on slow connections
+    transport:
+      respondingTimeouts:
+        readTimeout: 300s
 
 providers:
   file:

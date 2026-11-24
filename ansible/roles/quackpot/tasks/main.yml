@@ -1,0 +1,121 @@
+---
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - nftables
+      - unzip
+    state: present
+    update_cache: true
+
+# --- Firewall ---
+# Guests run with the Proxmox per-guest firewall off, so the proxy-only rule
+# lives in the container (as for PairDrop).
+
+- name: Deploy nftables config
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    mode: "0755"
+  notify: Reload nftables
+
+- name: Enable and start nftables
+  ansible.builtin.systemd:
+    name: nftables
+    enabled: true
+    state: started
+
+# --- Deno ---
+
+- name: Check the installed Deno version
+  ansible.builtin.command: /usr/local/bin/deno --version
+  register: quackpot_deno_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download Deno
+  ansible.builtin.get_url:
+    url: "https://github.com/denoland/deno/releases/download/v{{ quackpot_deno_version }}/deno-x86_64-unknown-linux-gnu.zip"
+    checksum: "sha256:https://github.com/denoland/deno/releases/download/v{{ quackpot_deno_version }}/deno-x86_64-unknown-linux-gnu.zip.sha256sum"
+    dest: /tmp/deno.zip
+    mode: "0644"
+  when: quackpot_deno_version not in (quackpot_deno_installed.stdout | default(''))
+
+- name: Install Deno
+  ansible.builtin.unarchive:
+    src: /tmp/deno.zip
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+  when: quackpot_deno_version not in (quackpot_deno_installed.stdout | default(''))
+  notify: Restart quackpot
+
+# --- Quackpot ---
+
+- name: Create the quackpot user
+  ansible.builtin.user:
+    name: quackpot
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ quackpot_data_dir }}"
+    create_home: false
+
+- name: Create directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.owner }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ quackpot_dir }}", owner: root, mode: "0755" }
+    - { path: "{{ quackpot_data_dir }}", owner: quackpot, mode: "0750" }
+    - { path: /etc/quackpot, owner: root, mode: "0755" }
+
+# The server needs only its code and page; tests and notes stay behind
+- name: Copy the server and page
+  ansible.builtin.copy:
+    src: "{{ quackpot_source }}/{{ item }}"
+    dest: "{{ quackpot_dir }}/"
+    owner: root
+    group: root
+    mode: u=rwX,g=rX,o=rX
+  loop:
+    - src
+    - page
+    - deno.json
+  notify: Restart quackpot
+
+# no diff, or a run with --diff (the default here) would print the token
+- name: Write the environment (admin token included)
+  ansible.builtin.template:
+    src: quackpot.env.j2
+    dest: /etc/quackpot/env
+    owner: root
+    group: root
+    mode: "0600"
+  diff: false
+  notify: Restart quackpot
+
+- name: Write the game config
+  ansible.builtin.copy:
+    content: "{{ quackpot_game_config | to_nice_json }}\n"
+    dest: /etc/quackpot/config.json
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart quackpot
+
+- name: Install the service
+  ansible.builtin.template:
+    src: quackpot.service.j2
+    dest: /etc/systemd/system/quackpot.service
+    mode: "0644"
+  notify: Restart quackpot
+
+- name: Enable and start quackpot
+  ansible.builtin.systemd:
+    name: quackpot
+    enabled: true
+    state: started
+    daemon_reload: true
