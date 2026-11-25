@@ -12,4 +12,17 @@ table inet quackpot {
     tcp dport {{ quackpot_port }} ip saddr != {{ quackpot_proxy_ip }} drop
     meta nfproto ipv6 tcp dport {{ quackpot_port }} drop
   }
+
+  # Quackpot fetches pictures people drag in as links. It checks they lead somewhere public itself;
+  # this makes sure, whatever a name resolves to: its own connections may reach the internet and the
+  # DNS resolver, but no private or special address (nothing in the homelab). Other users aren't limited.
+  chain output {
+    type filter hook output priority 0; policy accept;
+
+    meta skuid != "quackpot" accept
+    ct state established,related accept
+    ip daddr {{ quackpot_dns_ip }} meta l4proto { tcp, udp } th dport 53 accept
+    ip daddr { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.168.0.0/16, 198.18.0.0/15, 224.0.0.0/4, 240.0.0.0/4 } drop
+    meta nfproto ipv6 ip6 daddr != 2000::/3 drop
+  }
 }

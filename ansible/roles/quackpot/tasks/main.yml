@@ -8,6 +8,15 @@
     state: present
     update_cache: true
 
+# The firewall below limits this user's own connections, so it comes first
+- name: Create the quackpot user
+  ansible.builtin.user:
+    name: quackpot
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ quackpot_data_dir }}"
+    create_home: false
+
 # --- Firewall ---
 # Guests run with the Proxmox per-guest firewall off, so the proxy-only rule
 # lives in the container (as for PairDrop).
@@ -17,6 +26,7 @@
     src: nftables.conf.j2
     dest: /etc/nftables.conf
     mode: "0755"
+    validate: /usr/sbin/nft -c -f %s
   notify: Reload nftables
 
 - name: Enable and start nftables
@@ -51,14 +61,6 @@
   notify: Restart quackpot
 
 # --- Quackpot ---
-
-- name: Create the quackpot user
-  ansible.builtin.user:
-    name: quackpot
-    system: true
-    shell: /usr/sbin/nologin
-    home: "{{ quackpot_data_dir }}"
-    create_home: false
 
 - name: Create directories
   ansible.builtin.file:
