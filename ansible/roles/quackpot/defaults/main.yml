@@ -18,3 +18,14 @@ quackpot_open_rooms: true
 # Overrides for the game's and the duck's numbers, written to /etc/quackpot/config.json;
 # see quackpot.config.example.json in the quackpot repo. Empty: the built-in defaults.
 quackpot_game_config: {}
+# Sounds for the moments on the stream, copied from files/sounds/ to here (inside the data directory,
+# which the service may read). The Tetris ones are the "Boom! Tetris for Jeff!" calls, made with the
+# quackpot repo's tools/tetris-clips.sh; they aren't in that repo.
+quackpot_sounds_dir: "{{ quackpot_data_dir }}/sounds"
+quackpot_tetris_sounds:
+  - boom-tetris-1.ogg
+  - boom-tetris-2.ogg
+  - boom-tetris-3.ogg
+  - boom-tetris-4.ogg
+  - boom-tetris-5.ogg
+  - boom-tetris-6.ogg
