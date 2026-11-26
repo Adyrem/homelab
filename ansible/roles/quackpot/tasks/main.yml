@@ -117,12 +117,12 @@
   loop: "{{ quackpot_tetris_sounds }}"
   notify: Restart quackpot
 
-# the sounds are added to whatever else the game config says
+# the sounds are added to whatever else the game config says (the file holds "game" and "duck")
 - name: Write the game config
   ansible.builtin.copy:
     content: >-
-      {{ quackpot_game_config | combine({'moments': {'stack-tetris': {'sounds':
-      quackpot_tetris_sounds | map('regex_replace', '^', quackpot_sounds_dir + '/') | list}}}, recursive=True)
+      {{ quackpot_game_config | combine({'game': {'moments': {'stack-tetris': {'sounds':
+      quackpot_tetris_sounds | map('regex_replace', '^', quackpot_sounds_dir + '/') | list}}}}, recursive=True)
       | to_nice_json }}
     dest: /etc/quackpot/config.json
     owner: root
