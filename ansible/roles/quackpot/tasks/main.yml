@@ -5,7 +5,11 @@
       - ca-certificates
       - nftables
       - unzip
+      # YouTube clips: yt-dlp runs on Python, ffmpeg cuts the clip
+      - python3
+      - ffmpeg
     state: present
+    install_recommends: false
     update_cache: true
 
 # The firewall below limits this user's own connections, so it comes first
@@ -59,6 +63,20 @@
     mode: "0755"
   when: quackpot_deno_version not in (quackpot_deno_installed.stdout | default(''))
   notify: Restart quackpot
+
+- name: Install yt-dlp, for YouTube clips
+  ansible.builtin.get_url:
+    url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+    checksum: "sha256:https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS"
+    dest: "{{ quackpot_yt_dlp }}"
+    mode: "0755"
+    force: false
+
+# YouTube changes often, and an old yt-dlp soon stops working with it
+- name: Keep yt-dlp up to date
+  ansible.builtin.command: "{{ quackpot_yt_dlp }} -U"
+  register: quackpot_yt_dlp_update
+  changed_when: "'Updated yt-dlp to' in quackpot_yt_dlp_update.stdout"
 
 # --- Quackpot ---
 

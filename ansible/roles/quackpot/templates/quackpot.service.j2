@@ -10,12 +10,14 @@ Group=quackpot
 EnvironmentFile=/etc/quackpot/env
 WorkingDirectory={{ quackpot_dir }}
 # Deno's own permissions: listen on the port, reach out (only to fetch pictures dragged in as links,
-# which the firewall keeps off the homelab), read the code and config, write only the database
+# which the firewall keeps off the homelab), read the code and config, write only the database, and
+# run only yt-dlp and ffmpeg (for YouTube clips; they run as this user, so the firewall holds for them too)
 ExecStart=/usr/local/bin/deno run --no-prompt \
     --allow-net \
     --allow-read={{ quackpot_dir }},/etc/quackpot/config.json,{{ quackpot_data_dir }} \
     --allow-write={{ quackpot_data_dir }} \
-    --allow-env=QUACKPOT_HOSTNAME,QUACKPOT_PORT,QUACKPOT_DB,QUACKPOT_ADMIN_TOKEN,QUACKPOT_CONFIG,QUACKPOT_TRUSTED_PROXIES,QUACKPOT_OPEN_ROOMS \
+    --allow-run={{ quackpot_yt_dlp }},{{ quackpot_ffmpeg }} \
+    --allow-env=QUACKPOT_HOSTNAME,QUACKPOT_PORT,QUACKPOT_DB,QUACKPOT_ADMIN_TOKEN,QUACKPOT_CONFIG,QUACKPOT_TRUSTED_PROXIES,QUACKPOT_OPEN_ROOMS,QUACKPOT_YT_DLP,QUACKPOT_FFMPEG \
     {{ quackpot_dir }}/src/main.ts
 Restart=on-failure
 RestartSec=5

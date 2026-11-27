@@ -22,6 +22,10 @@ quackpot_game_config: {}
 # which the service may read). The Tetris ones are the "Boom! Tetris for Jeff!" calls, made with the
 # quackpot repo's tools/tetris-clips.sh; they aren't in that repo.
 quackpot_sounds_dir: "{{ quackpot_data_dir }}/sounds"
+# YouTube links pasted on the page become clips: yt-dlp (the official release, kept up to date,
+# since YouTube keeps breaking older ones) finds the video, ffmpeg (Debian's) cuts it
+quackpot_yt_dlp: /usr/local/bin/yt-dlp
+quackpot_ffmpeg: /usr/bin/ffmpeg
 quackpot_tetris_sounds:
   - boom-tetris-1.ogg
   - boom-tetris-2.ogg
